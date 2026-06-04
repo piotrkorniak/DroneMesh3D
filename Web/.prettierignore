@@ -1,6 +1,7 @@
 # Build output
 dist/
 coverage/
+obj/
 
 # Dependencies
 node_modules/

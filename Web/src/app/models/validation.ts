@@ -14,5 +14,5 @@ export enum ValidationRule {
   Closure = 'CLOSURE',
   SelfIntersection = 'SELF_INTERSECTION',
   AreaTooLarge = 'AREA_TOO_LARGE',
-  AreaTooSmall = 'AREA_TOO_SMALL'
+  AreaTooSmall = 'AREA_TOO_SMALL',
 }

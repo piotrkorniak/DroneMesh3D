@@ -130,8 +130,8 @@ export class MapComponent implements OnInit, OnDestroy {
         this.vectorLayer
       ],
       view: new View({
-        projection: 'EPSG:4326',
-        center: [20.0, 52.0],
+        projection: 'EPSG:3857', // Web Mercator for tile compatibility
+        center: fromLonLat([20.0, 52.0]),
         zoom: 6
       })
     });
@@ -139,7 +139,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
   startDrawing(): void { /* activates Draw interaction, sets isDrawing signal */ }
   clearPolygon(): void { /* removes features, resets all signals */ }
-  submitArea(): void { /* validates, converts to GeoJSON, sends to API */ }
+  submitArea(): void { /* validates, transforms coords from EPSG:3857 to EPSG:4326 (toLonLat), converts to GeoJSON, sends to API */ }
 }
 ```
 
@@ -364,18 +364,22 @@ public sealed class CreateAreaCommandHandler(
         if (!GeoJsonValidator.IsValidPolygon(command.Type, command.Coordinates))
             return new ErrorResponse("Invalid GeoJSON Polygon geometry.");
 
-        // 2. Validate geometry rules
+        // 2. Reject multi-ring polygons (holes not supported)
+        if (command.Coordinates.Length > 1)
+            return new ErrorResponse("Multi-ring polygons (holes) are not supported.");
+
+        // 3. Validate geometry rules
         var outerRing = command.Coordinates[0];
         var validationResult = areaValidator.Validate(outerRing);
         if (!validationResult.IsValid)
             return new ValidationErrorResponse(validationResult.Errors);
 
-        // 3. Convert and persist
+        // 4. Convert and persist
         var geometry = GeometryConverter.ToPolygon(outerRing);
         var entity = new AreaEntity
         {
             Id = Guid.CreateVersion7(),
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = DateTimeOffset.UtcNow,
             Geometry = geometry
         };
 
@@ -436,8 +440,10 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
         if (!validators.Any()) return await next();
 
         var context = new ValidationContext<TRequest>(request);
-        var failures = validators
-            .Select(v => v.Validate(context))
+        var validationResults = await Task.WhenAll(
+            validators.Select(v => v.ValidateAsync(context, ct)));
+
+        var failures = validationResults
             .SelectMany(result => result.Errors)
             .Where(f => f is not null)
             .ToList();
@@ -463,7 +469,7 @@ public record CreateAreaRequest(
 // DTOs/AreaResponse.cs
 public record AreaResponse(
     Guid Id,
-    DateTime CreatedAt,
+    DateTimeOffset CreatedAt,
     GeoJsonGeometry Geometry);
 
 // DTOs/GeoJsonGeometry.cs
@@ -620,8 +626,8 @@ using NetTopologySuite.Geometries;
 public sealed class AreaEntity
 {
     public Guid Id { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public Geometry Geometry { get; set; } = null!;
+    public DateTimeOffset CreatedAt { get; set; }
+    public required Geometry Geometry { get; set; }
 }
 ```
 

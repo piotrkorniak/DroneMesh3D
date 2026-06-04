@@ -117,7 +117,7 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
   - [ ] 3.3 Implementacja `CreateAreaCommand` i `CreateAreaCommandHandler`
     - Utworzenie record `CreateAreaCommand : IRequest<OneOf<AreaResponse, ValidationErrorResponse, ErrorResponse>>`
     - Utworzenie handlera z primary constructor (inject: IAreaValidator, IAreaRepository)
-    - Przepływ: walidacja GeoJSON → walidacja geometrii → konwersja NTS → persystencja → mapowanie na AreaResponse
+    - Przepływ: walidacja GeoJSON → odrzucenie multi-ring (holes) → walidacja geometrii → konwersja NTS → persystencja → mapowanie na AreaResponse
     - _Wymagania: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 6.1_
 
   - [ ] 3.4 Implementacja `GetAreaQuery` i `GetAreaQueryHandler`
@@ -170,7 +170,8 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - Użycie `inject()` zamiast constructor injection
     - Stan komponentu przez signals: `validationResult`, `isSubmitting`, `submissionError`, `hasPolygon`, `isDrawing`
     - Computed signals: `isValid`, `validationErrors`
-    - Inicjalizacja mapy OpenLayers z warstwą satelitarną i projekcją EPSG:4326
+    - Inicjalizacja mapy OpenLayers z warstwą satelitarną i projekcją EPSG:3857 (Web Mercator)
+    - Transformacja współrzędnych z EPSG:3857 → EPSG:4326 przy komunikacji z API (ol/proj toLonLat)
     - VectorSource i VectorLayer dla poligonów
     - _Wymagania: 1.1, 1.2, 1.3_
 

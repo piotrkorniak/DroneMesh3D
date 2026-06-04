@@ -1,6 +1,6 @@
 # Dokumentacja Projektu: DroneMesh3D
 
-**Krótki opis projektu:** Kompletna dokumentacja koncepcyjno-techniczna systemu DroneMesh3D. Projekt zakłada stworzenie aplikacji ułatwiającej generowanie modeli 3D obiektów z wykorzystaniem drona DJI Mini 5 Pro. Dokument ten łączy definicję problemu biznesowego, proponowane rozwiązanie architektoniczne oraz szczegółowy przepływ pracy (User Flow) ze wskazaniem na konkretne technologie (.NET Core, C#, SQL). Stanowi gotowy fundament pod stworzenie zadań w systemie wersjonowania i rozpoczęcie kodowania.
+**Krótki opis projektu:** Kompletna dokumentacja koncepcyjno-techniczna systemu DroneMesh3D. Projekt zakłada stworzenie aplikacji ułatwiającej generowanie modeli 3D obiektów z wykorzystaniem drona DJI Mini 5 Pro. Dokument ten łączy definicję problemu biznesowego, proponowane rozwiązanie architektoniczne oraz szczegółowy przepływ pracy (User Flow) ze wskazaniem na konkretne technologie (.NET 10, C#, PostgreSQL + PostGIS). Stanowi gotowy fundament pod stworzenie zadań w systemie wersjonowania i rozpoczęcie kodowania.
 
 ---
 
@@ -27,7 +27,7 @@ Użytkownik otwiera aplikację z osadzoną, interaktywną mapą. Znajdując swoj
 * **Warstwa techniczna:** Interfejs waliduje kształt i przesyła zbiór współrzędnych geograficznych (długość i szerokość) w formacie GeoJSON bezpośrednio do backendu.
 
 ### Krok 2: Przeliczanie Trasy Lotu (C# Backend)
-Główny silnik aplikacji, napisany w **.NET Core**, przejmuje przesłane współrzędne. To tutaj odbywa się główna kalkulacja matematyczna.
+Główny silnik aplikacji, napisany w **.NET 10**, przejmuje przesłane współrzędne. To tutaj odbywa się główna kalkulacja matematyczna.
 * **Warstwa techniczna:** Algorytm w C# wylicza siatkę lotu (Grid) lub trajektorię orbitalną (Point of Interest). System oblicza bezpieczną wysokość początkową, kąt nachylenia gimbala (np. -45 do -60 stopni) oraz odległość między kolejnymi Waypointami. Algorytm rygorystycznie pilnuje 75-80% nakładania się zdjęć na siebie (overlap).
 
 ### Krok 3: Generowanie Pliku Misji
@@ -40,7 +40,7 @@ Użytkownik ładuje wygenerowany plik do aplikacji sterującej na smartfonie/kon
 
 ### Krok 5: Ingestia Danych i Orkiestracja (.NET Worker Service)
 Kluczowy etap automatyzacji, który zdejmuje z barków programisty konieczność ręcznego pilnowania silnika renderującego.
-* **Warstwa techniczna:** Po zgraniu zdjęć z karty SD, usługa działająca w tle (**BackgroundService** w .NET) natychmiast wykrywa nową paczkę danych. Serwis przez REST API inicjuje nowe zadanie w silniku fotogrametrycznym (np. WebODM), a statusy postępu loguje bezpiecznie do bazy **SQL**.
+* **Warstwa techniczna:** Po zgraniu zdjęć z karty SD, usługa działająca w tle (**BackgroundService** w .NET) natychmiast wykrywa nową paczkę danych. Serwis przez REST API inicjuje nowe zadanie w silniku fotogrametrycznym (np. WebODM), a statusy postępu loguje bezpiecznie do bazy **PostgreSQL**.
 
 ### Krok 6: Wizualizacja i Alternatywne Zastosowania
 Po kilkudziesięciu minutach, gdy ciężkie obliczenia na GPU zostaną zakończone, system jest gotowy do prezentacji.

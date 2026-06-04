@@ -26,7 +26,7 @@ Ta funkcjonalność implementuje pierwszy krok przepływu pracy DroneMesh3D: umo
 
 1. THE Map_Component SHALL wyrenderować pełnoekranową interaktywną mapę OpenLayers z podkładem satelitarnym/lotniczym przy załadowaniu aplikacji.
 2. THE Map_Component SHALL obsługiwać interakcje przesuwania i powiększania do nawigacji po mapie.
-3. THE Map_Component SHALL wyświetlać mapę w układzie współrzędnych EPSG:4326 (WGS 84) do obsługi współrzędnych geograficznych.
+3. THE Map_Component SHALL wyświetlać mapę w projekcji EPSG:3857 (Web Mercator) do kompatybilności z dostawcami kafelków, transformując współrzędne do EPSG:4326 (WGS 84) przy komunikacji z backendem.
 
 ### Requirement 2: Narzędzie rysowania poligonu
 
@@ -77,9 +77,10 @@ Ta funkcjonalność implementuje pierwszy krok przepływu pracy DroneMesh3D: umo
 1. THE Area_API SHALL udostępniać endpoint POST pod adresem `/api/areas` akceptujący ciało żądania JSON z geometrią GeoJSON Polygon.
 2. WHEN Area_API odbierze żądanie, THE Area_API SHALL zwalidować, że ciało żądania zawiera prawidłową geometrię GeoJSON Polygon.
 3. IF ciało żądania zawiera nieprawidłowy GeoJSON, THEN THE Area_API SHALL zwrócić odpowiedź HTTP 400 z opisowym komunikatem błędu.
-4. WHEN Area_API odbierze prawidłowy GeoJSON Polygon, THE Area_API SHALL wykonać walidację po stronie serwera sprawdzającą liczbę wierzchołków, samoprzecięcia i limity powierzchni zgodnie z regułami frontendowymi.
-5. IF walidacja po stronie serwera nie powiedzie się, THEN THE Area_API SHALL zwrócić odpowiedź HTTP 422 ze szczegółami naruszeń walidacji.
-6. WHEN Area_API odbierze prawidłowy i zweryfikowany poligon, THE Area_API SHALL zwrócić odpowiedź HTTP 201 z utworzonym zasobem obszaru zawierającym unikalny identyfikator.
+4. IF ciało żądania zawiera poligon z wieloma pierścieniami (inner rings/holes), THEN THE Area_API SHALL zwrócić odpowiedź HTTP 400, ponieważ wielopierścieniowe poligony nie są obsługiwane.
+5. WHEN Area_API odbierze prawidłowy GeoJSON Polygon, THE Area_API SHALL wykonać walidację po stronie serwera sprawdzającą liczbę wierzchołków, samoprzecięcia i limity powierzchni zgodnie z regułami frontendowymi.
+6. IF walidacja po stronie serwera nie powiedzie się, THEN THE Area_API SHALL zwrócić odpowiedź HTTP 422 ze szczegółami naruszeń walidacji.
+7. WHEN Area_API odbierze prawidłowy i zweryfikowany poligon, THE Area_API SHALL zwrócić odpowiedź HTTP 201 z utworzonym zasobem obszaru zawierającym unikalny identyfikator.
 
 ### Requirement 6: Zapis obszaru do bazy danych
 

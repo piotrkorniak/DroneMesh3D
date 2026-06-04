@@ -1,0 +1,44 @@
+<div class="map-toolbar">
+  <div class="toolbar-actions">
+    <button
+      class="toolbar-btn draw-btn"
+      [disabled]="isDrawing()"
+      (click)="draw.emit()"
+      aria-label="Draw polygon"
+    >
+      Draw
+    </button>
+
+    <button
+      class="toolbar-btn clear-btn"
+      [disabled]="!hasPolygon() || isSubmitting()"
+      (click)="clear.emit()"
+      aria-label="Clear polygon"
+    >
+      Clear
+    </button>
+
+    <button
+      class="toolbar-btn submit-btn"
+      [disabled]="!isValid() || isSubmitting() || !hasPolygon()"
+      (click)="submit.emit()"
+      aria-label="Submit area"
+    >
+      @if (isSubmitting()) {
+        Submitting...
+      } @else {
+        Submit
+      }
+    </button>
+  </div>
+
+  @if (validationErrors().length > 0) {
+    <div class="validation-errors" role="alert" aria-live="polite">
+      <ul>
+        @for (error of validationErrors(); track error) {
+          <li>{{ error }}</li>
+        }
+      </ul>
+    </div>
+  }
+</div>

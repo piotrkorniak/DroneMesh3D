@@ -1,0 +1,14 @@
+<div id="map-container" #mapContainer class="map-container">
+  <div class="toolbar-overlay">
+    <app-map-toolbar
+      [isDrawing]="isDrawing()"
+      [hasPolygon]="hasPolygon()"
+      [isValid]="isValid()"
+      [isSubmitting]="isSubmitting()"
+      [validationErrors]="validationErrors()"
+      (draw)="startDrawing()"
+      (clear)="clearPolygon()"
+      (submit)="submitArea()"
+    />
+  </div>
+</div>

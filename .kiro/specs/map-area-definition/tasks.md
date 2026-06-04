@@ -67,8 +67,8 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - Migracja znajduje się w `Core/Migrations/`
     - _Wymagania: 6.2, 6.3_
 
-- [ ] 2. Implementacja walidacji poligonów na frontendzie
-  - [~] 2.1 Implementacja `PolygonValidatorService`
+- [x] 2. Implementacja walidacji poligonów na frontendzie
+  - [x] 2.1 Implementacja `PolygonValidatorService`
     - Utworzenie serwisu `src/app/services/polygon-validator.service.ts` (injectable, providedIn: root)
     - Implementacja metod: `validate()`, `hasMinVertices()`, `isClosed()`, `hasSelfIntersection()`, `calculateAreaSqm()`
     - Algorytm samoprzecięć: sprawdzenie przecięć krawędzi nie-sąsiadujących (segment intersection)
@@ -76,40 +76,40 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - Stałe: `MAX_AREA_HECTARES = 5`, `MIN_AREA_SQM = 100`
     - _Wymagania: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-  - [ ]* 2.2 Testy property-based dla walidacji liczby wierzchołków
+  - [x] 2.2 Testy property-based dla walidacji liczby wierzchołków
     - **Property 1: Walidacja liczby wierzchołków**
     - Generowanie losowych tablic współrzędnych z <3 różnymi wierzchołkami → oczekiwany błąd MIN_VERTICES
     - Generowanie losowych tablic z ≥3 różnymi wierzchołkami → brak błędu MIN_VERTICES
     - **Waliduje: Wymaganie 3.1**
 
-  - [ ]* 2.3 Testy property-based dla walidacji zamknięcia poligonu
+  - [x] 2.3 Testy property-based dla walidacji zamknięcia poligonu
     - **Property 2: Walidacja zamknięcia poligonu**
     - Generowanie tablic, w których pierwsza ≠ ostatnia współrzędna → oczekiwany błąd CLOSURE
     - Generowanie tablic, w których pierwsza = ostatnia współrzędna → brak błędu CLOSURE
     - **Waliduje: Wymaganie 3.2**
 
-  - [ ]* 2.4 Testy property-based dla wykrywania samoprzecięć
+  - [x] 2.4 Testy property-based dla wykrywania samoprzecięć
     - **Property 3: Wykrywanie samoprzecięć**
     - Generowanie samoprzecinających się poligonów → oczekiwany błąd SELF_INTERSECTION
     - Generowanie prostych (nie-samoprzecinających się) poligonów → brak błędu SELF_INTERSECTION
     - **Waliduje: Wymaganie 3.3**
 
-  - [ ]* 2.5 Testy property-based dla limitów powierzchni
+  - [x] 2.5 Testy property-based dla limitów powierzchni
     - **Property 4: Walidacja limitów powierzchni**
     - Generowanie poligonów o powierzchni >50 000 m² → oczekiwany błąd AREA_TOO_LARGE
     - Generowanie poligonów o powierzchni <100 m² → oczekiwany błąd AREA_TOO_SMALL
     - Generowanie poligonów o powierzchni w przedziale [100, 50 000] m² → brak błędu dotyczącego powierzchni
     - **Waliduje: Wymagania 3.4, 3.5**
 
-  - [ ]* 2.6 Testy jednostkowe dla `PolygonValidatorService`
+  - [x] 2.6 Testy jednostkowe dla `PolygonValidatorService`
     - Test: poligon z 2 wierzchołkami → błąd MIN_VERTICES
     - Test: poligon niezamknięty → błąd CLOSURE
     - Test: motylkowy kształt → błąd SELF_INTERSECTION
     - Test: prawidłowy poligon → isValid = true
     - _Wymagania: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 3. Implementacja walidacji i MediatR na backendzie
-  - [~] 3.1 Implementacja `AreaValidator`
+- [x] 3. Implementacja walidacji i MediatR na backendzie
+  - [x] 3.1 Implementacja `AreaValidator`
     - Utworzenie klasy `AreaValidator : IAreaValidator` w `Core/Validation/` (sealed, z metodami: `Validate()`, `HasMinimumVertices()`, `IsClosed()`, `HasSelfIntersection()`, `CalculateAreaSqm()`)
     - Namespace: `DroneMesh3D.Core.Validation`
     - Implementuje `IAreaValidator` z `DroneMesh3D.Core.Interfaces`
@@ -117,63 +117,63 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - Rejestracja w DI jako scoped
     - _Wymagania: 5.4, 5.5_
 
-  - [~] 3.2 Implementacja `GeoJsonValidator` (walidacja struktury)
+  - [x] 3.2 Implementacja `GeoJsonValidator` (walidacja struktury)
     - Utworzenie statycznej klasy w `Core/Validation/` walidującej strukturę GeoJSON: obecność pola `type` = "Polygon", obecność `coordinates`, numeryczne współrzędne, niepusty pierścień
     - Namespace: `DroneMesh3D.Core.Validation`
     - _Wymagania: 5.2, 5.3_
 
-  - [~] 3.3 Implementacja `CreateAreaCommand` i `CreateAreaCommandHandler`
+  - [x] 3.3 Implementacja `CreateAreaCommand` i `CreateAreaCommandHandler`
     - Utworzenie record `CreateAreaCommand : IRequest<OneOf<AreaResponse, ValidationErrorResponse, ErrorResponse>>`
     - Utworzenie handlera z primary constructor (inject: IAreaValidator, IAreaRepository)
     - Przepływ: walidacja GeoJSON → odrzucenie multi-ring (holes) → walidacja geometrii → konwersja NTS → persystencja → mapowanie na AreaResponse
     - _Wymagania: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 6.1_
 
-  - [~] 3.4 Implementacja `GetAreaQuery` i `GetAreaQueryHandler`
+  - [x] 3.4 Implementacja `GetAreaQuery` i `GetAreaQueryHandler`
     - Utworzenie record `GetAreaQuery(Guid Id) : IRequest<AreaResponse?>`
     - Utworzenie handlera odczytującego z repozytorium i mapującego na AreaResponse
     - _Wymagania: 5.6_
 
-  - [~] 3.5 Implementacja `ValidationBehavior` (MediatR pipeline)
+  - [x] 3.5 Implementacja `ValidationBehavior` (MediatR pipeline)
     - Utworzenie generic pipeline behavior integrującego FluentValidation z MediatR
     - Automatyczna walidacja requestów przed dotarciem do handlera
     - _Wymagania: 5.2, 5.4_
 
-  - [~] 3.6 Implementacja `AreasEndpoint` (Minimal API)
+  - [x] 3.6 Implementacja `AreasEndpoint` (Minimal API)
     - Utworzenie statycznej klasy z extension method `MapAreasEndpoints()`
     - POST /api/areas: odbiera request → tworzy command → wysyła przez IMediator → mapuje wynik na HTTP response (201/400/422)
     - GET /api/areas/{id}: tworzy query → wysyła przez IMediator → 200/404
     - _Wymagania: 5.1, 5.6_
 
-  - [~] 3.7 Implementacja Global Exception Handler (middleware)
+  - [x] 3.7 Implementacja Global Exception Handler (middleware)
     - Utworzenie middleware przechwytującego nieobsłużone wyjątki (w tym `ValidationException` z FluentValidation)
     - `ValidationException` → HTTP 400 z listą błędów
     - Pozostałe wyjątki → HTTP 500 z ogólnym komunikatem, logowanie szczegółów wewnętrznie
     - Rejestracja w pipeline (`app.UseExceptionHandler()` lub custom middleware)
     - _Wymagania: 5.3, 6.4_
 
-  - [ ]* 3.8 Testy property-based dla walidacji struktury GeoJSON na backendzie
+  - [x] 3.8 Testy property-based dla walidacji struktury GeoJSON na backendzie
     - **Property 6: Backend odrzuca nieprawidłowy GeoJSON**
     - Generowanie losowych obiektów JSON niespełniających struktury GeoJSON Polygon → oczekiwany wynik: walidacja nieudana
     - **Waliduje: Wymagania 5.2, 5.3**
 
-  - [ ]* 3.9 Testy property-based dla zgodności walidacji frontend-backend
+  - [x] 3.9 Testy property-based dla zgodności walidacji frontend-backend
     - **Property 7: Zgodność walidacji frontend-backend**
     - Generowanie losowych tablic współrzędnych → porównanie werdyktu AreaValidator (C#) z PolygonValidatorService (TS) — oba powinny dać identyczny wynik
     - **Waliduje: Wymagania 5.4, 5.5**
 
-  - [ ]* 3.10 Testy jednostkowe dla `AreaValidator` i `CreateAreaCommandHandler`
+  - [x] 3.10 Testy jednostkowe dla `AreaValidator` i `CreateAreaCommandHandler`
     - Test handler: prawidłowy command → zwraca AreaResponse (OneOf case 1)
     - Test handler: nieprawidłowy GeoJSON → zwraca ErrorResponse (OneOf case 3)
     - Test handler: nieudana walidacja geometrii → zwraca ValidationErrorResponse (OneOf case 2)
     - Test validator: <3 wierzchołki, niezamknięty, samoprzecinający się, za duży, za mały
     - _Wymagania: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [~] 4. Punkt kontrolny — Upewnij się, że testy walidacji przechodzą
+- [x] 4. Punkt kontrolny — Upewnij się, że testy walidacji przechodzą
   - Uruchomienie wszystkich testów frontendowych i backendowych
   - Zapytaj użytkownika w razie pytań
 
-- [ ] 5. Implementacja komponentu mapy i rysowania poligonów
-  - [~] 5.1 Implementacja `MapComponent` z OpenLayers i signals
+- [x] 5. Implementacja komponentu mapy i rysowania poligonów
+  - [x] 5.1 Implementacja `MapComponent` z OpenLayers i signals
     - Utworzenie standalone component `MapComponent` z ChangeDetectionStrategy.OnPush
     - Użycie `inject()` zamiast constructor injection
     - Stan komponentu przez signals: `validationResult`, `isSubmitting`, `submissionError`, `hasPolygon`, `isDrawing`
@@ -183,7 +183,7 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - VectorSource i VectorLayer dla poligonów
     - _Wymagania: 1.1, 1.2, 1.3_
 
-  - [~] 5.2 Implementacja interakcji rysowania poligonu
+  - [x] 5.2 Implementacja interakcji rysowania poligonu
     - Dodanie Draw interaction z typem 'Polygon' do mapy
     - Aktywacja/dezaktywacja przez signal `isDrawing`
     - Wyświetlanie wierzchołków i krawędzi w czasie rzeczywistym
@@ -191,12 +191,12 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - Wywołanie walidacji (PolygonValidatorService) po zakończeniu rysowania
     - _Wymagania: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-  - [~] 5.3 Implementacja edycji poligonu (Modify interaction)
+  - [x] 5.3 Implementacja edycji poligonu (Modify interaction)
     - Dodanie Modify interaction pozwalającej na przeciąganie wierzchołków
     - Re-walidacja geometrii po każdej modyfikacji (update signal validationResult)
     - _Wymagania: 7.1, 7.2, 7.3_
 
-  - [~] 5.4 Implementacja `MapToolbarComponent` z signal inputs
+  - [x] 5.4 Implementacja `MapToolbarComponent` z signal inputs
     - Utworzenie standalone component z `input()` i `output()` (Angular 21 API)
     - Signal inputs: `isDrawing`, `hasPolygon`, `isValid`, `isSubmitting`, `validationErrors`
     - Outputs: `draw`, `clear`, `submit`
@@ -204,43 +204,43 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - Stany przycisków oparte na computed logic
     - _Wymagania: 2.1, 2.6, 3.6, 3.7, 4.1_
 
-  - [~] 5.5 Implementacja wizualnego feedbacku walidacji
+  - [x] 5.5 Implementacja wizualnego feedbacku walidacji
     - Podświetlenie poligonu na czerwono gdy walidacja nieudana
     - Styl domyślny (niebieski) gdy poligon prawidłowy
     - Reaktywna zmiana stylu na bazie signal `isValid`
     - _Wymagania: 3.6, 3.7_
 
-- [ ] 6. Implementacja komunikacji z API i wysyłki
-  - [~] 6.1 Generowanie klienta HTTP z OpenAPI spec
+- [x] 6. Implementacja komunikacji z API i wysyłki
+  - [x] 6.1 Generowanie klienta HTTP z OpenAPI spec
     - Zainstalowanie `@openapitools/openapi-generator-cli` jako devDependency
     - Dodanie skryptu npm `api:generate` generującego klienta TypeScript-Angular z `http://localhost:5000/openapi/v1.json`
     - Wygenerowany kod trafia do `src/app/api/` (services, models)
     - Dodanie wygenerowanego katalogu do `.gitignore` lub commitowanie (decyzja: commitujemy dla CI)
     - _Wymagania: 4.4_
 
-  - [~] 6.2 Implementacja `AreaService` (wrapper nad wygenerowanym klientem)
+  - [x] 6.2 Implementacja `AreaService` (wrapper nad wygenerowanym klientem)
     - Utworzenie serwisu z `inject()` delegującego do wygenerowanego `AreasApiService`
     - Metoda `createArea(geojson: CreateAreaRequest): Observable<AreaResponse>`
     - _Wymagania: 4.4_
 
-  - [ ]* 6.3 Testy property-based dla zachowania współrzędnych w GeoJSON
+  - [x] 6.3 Testy property-based dla zachowania współrzędnych w GeoJSON
     - **Property 5: Zachowanie współrzędnych w GeoJSON**
     - Generowanie prawidłowych tablic współrzędnych → konwersja do GeoJSON → sprawdzenie zachowania współrzędnych w oryginalnej kolejności
     - **Waliduje: Wymagania 4.2, 4.3**
 
-  - [~] 6.4 Implementacja logiki wysyłania w `MapComponent`
+  - [x] 6.4 Implementacja logiki wysyłania w `MapComponent`
     - Metoda `submitArea()`: konwersja współrzędnych OL → GeoJSON, wywołanie AreaService
     - Zarządzanie stanem przez signals: `isSubmitting.set(true)`, dezaktywacja submit
     - Obsługa sukcesu/błędu z aktualizacją signals
     - _Wymagania: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-  - [ ]* 6.5 Testy jednostkowe dla `AreaService`
+  - [x] 6.5 Testy jednostkowe dla `AreaService`
     - Test: wywołanie POST z prawidłowym URL i ładunkiem (provideHttpClientTesting)
     - Test: obsługa błędu sieciowego
     - _Wymagania: 4.4, 4.6_
 
-- [ ] 7. Implementacja repozytorium i persystencji
-  - [~] 7.1 Implementacja `AreaRepository`
+- [x] 7. Implementacja repozytorium i persystencji
+  - [x] 7.1 Implementacja `AreaRepository`
     - Utworzenie sealed class w `Core/Repositories/` z primary constructor (inject AppDbContext)
     - Namespace: `DroneMesh3D.Core.Repositories`
     - Implementuje `IAreaRepository` z `DroneMesh3D.Core.Interfaces`
@@ -249,19 +249,19 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - Rejestracja w DI jako scoped
     - _Wymagania: 6.1, 6.2, 6.3_
 
-  - [~] 7.2 Implementacja `GeometryConverter` (helper)
+  - [x] 7.2 Implementacja `GeometryConverter` (helper)
     - Statyczna klasa w `Core/` konwertująca double[][] → NTS Polygon i NTS Polygon → GeoJsonGeometry
     - Namespace: `DroneMesh3D.Core`
     - Używa `GeoJsonGeometry` z `DroneMesh3D.Core.Models`
     - Ustawienie SRID = 4326 (WGS 84)
     - _Wymagania: 6.2_
 
-  - [ ]* 7.3 Testy property-based dla round-trip persystencji
+  - [x] 7.3 Testy property-based dla round-trip persystencji
     - **Property 8: Round-trip persystencji obszaru**
     - Generowanie prawidłowych definicji → zapis → odczyt po ID → sprawdzenie identycznych współrzędnych, niepustego ID i prawidłowego timestamp
     - **Waliduje: Wymagania 6.1, 6.3**
 
-  - [ ]* 7.4 Testy integracyjne endpointu z WebApplicationFactory
+  - [x] 7.4 Testy integracyjne endpointu z WebApplicationFactory
     - Test: POST prawidłowego poligonu → 201 Created z AreaResponse
     - Test: POST nieprawidłowego JSON → 400 Bad Request
     - Test: POST z nieudaną walidacją geometrii → 422 Unprocessable Entity
@@ -269,27 +269,27 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - Test: GET /api/areas/{nonexistent} → 404
     - _Wymagania: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 6.4_
 
-- [~] 8. Punkt kontrolny — Upewnij się, że testy przechodzą
+- [x] 8. Punkt kontrolny — Upewnij się, że testy przechodzą
   - Uruchomienie pełnego zestawu testów
   - Zapytaj użytkownika w razie pytań
 
-- [ ] 9. Integracja i połączenie warstw
-  - [~] 9.1 Konfiguracja proxy Angular do backendu .NET (development bez Dockera)
+- [x] 9. Integracja i połączenie warstw
+  - [x] 9.1 Konfiguracja proxy Angular do backendu .NET (development bez Dockera)
     - Utworzenie pliku `proxy.conf.json` przekierowującego `/api/*` na backend .NET (domyślnie https://localhost:5001)
     - Konfiguracja `angular.json` do użycia proxy w trybie dev (`ng serve`)
     - Uwaga: w środowisku Docker nginx pełni rolę reverse proxy — `proxy.conf.json` jest używany tylko przy `ng serve` poza kontenerem
     - _Wymagania: 4.4_
 
-  - [~] 9.2 Połączenie komponentów frontendowych w `AppComponent`
+  - [x] 9.2 Połączenie komponentów frontendowych w `AppComponent`
     - Osadzenie `MapComponent` jako głównego widoku
     - Weryfikacja pełnego przepływu: rysowanie → walidacja → wysyłka → odpowiedź z backendu
     - _Wymagania: 1.1, 2.1, 4.1_
 
-  - [ ]* 9.3 Testy integracyjne end-to-end
+  - [x] 9.3 Testy integracyjne end-to-end
     - Test manualny lub e2e: narysowanie poligonu → submit → 201 → dane w bazie
     - _Wymagania: wszystkie_
 
-- [~] 10. Punkt kontrolny końcowy
+- [x] 10. Punkt kontrolny końcowy
   - Uruchomienie wszystkich testów (frontend + backend + integracyjne)
   - Zapytaj użytkownika w razie pytań
 

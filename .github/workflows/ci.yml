@@ -38,7 +38,7 @@ jobs:
         working-directory: Web
 
       - name: Check Prettier formatting
-        run: npx prettier --check .
+        run: npx prettier --list-different . || (echo "::error::The above files are not formatted. Run 'npx prettier --write .' in Web/ locally." && exit 1)
         working-directory: Web
 
       - name: Run ESLint

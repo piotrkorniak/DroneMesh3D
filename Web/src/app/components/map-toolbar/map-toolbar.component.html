@@ -19,7 +19,7 @@
     <button
       class="toolbar-btn submit-btn"
       [disabled]="!isValid() || isSubmitting() || !hasPolygon()"
-      (click)="submit.emit()"
+      (click)="submitArea.emit()"
       aria-label="Submit area">
       @if (isSubmitting()) {
       Submitting...

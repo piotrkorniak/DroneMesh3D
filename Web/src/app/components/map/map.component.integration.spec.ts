@@ -61,6 +61,7 @@ describe('MapComponent Integration (end-to-end flow)', () => {
     component.hasPolygon.set(true);
 
     // --- Step 2: Trigger validation (simulating what happens after drawend) ---
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private injected service for test
     const polygonValidator = (component as any).polygonValidator;
     const validationResult = polygonValidator.validate(validCoords4326);
     component.validationResult.set(validationResult);

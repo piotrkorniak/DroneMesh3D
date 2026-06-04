@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MapComponent } from './map.component';
-import { PolygonValidatorService } from '../../services/polygon-validator.service';
 import { ValidationRule } from '../../models/validation';
+import { Style } from 'ol/style';
 
 describe('MapComponent', () => {
   let component: MapComponent;
@@ -78,14 +78,12 @@ describe('MapComponent', () => {
       component.startDrawing();
       const interactions = component.getMap().getInteractions().getArray();
       const drawInteraction = interactions.find(
-        (i) => (i as any).type_ === 'Polygon' || i.constructor.name === 'Draw'
+        (i) => i.constructor.name === 'Draw'
       );
       expect(drawInteraction).toBeTruthy();
     });
 
     it('should clear existing features before starting new drawing', () => {
-      // Add a dummy feature to the vector source
-      const Feature = (window as any).ol?.Feature;
       component.vectorSource.clear(); // ensure clean state
       component.startDrawing();
       // After calling startDrawing, vectorSource should be empty (no previously drawn features)
@@ -159,7 +157,7 @@ describe('MapComponent', () => {
       component.startDrawing();
 
       const map = component.getMap();
-      // Add a Modify interaction via private method (simulate post-draw state)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
       (component as any).addModifyInteraction();
 
       // Verify Modify interaction exists
@@ -185,7 +183,7 @@ describe('MapComponent', () => {
     });
 
     it('should add Modify interaction after drawing completes', () => {
-      // Trigger addModifyInteraction (simulating post-draw state)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
       (component as any).addModifyInteraction();
 
       const map = component.getMap();
@@ -197,7 +195,9 @@ describe('MapComponent', () => {
     });
 
     it('should not accumulate Modify interactions on repeated calls', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
       (component as any).addModifyInteraction();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
       (component as any).addModifyInteraction();
 
       const map = component.getMap();
@@ -209,7 +209,9 @@ describe('MapComponent', () => {
     });
 
     it('should remove Modify interaction via removeModifyInteraction', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
       (component as any).addModifyInteraction();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
       (component as any).removeModifyInteraction();
 
       const map = component.getMap();
@@ -230,22 +232,22 @@ describe('MapComponent', () => {
       component.validationResult.set(null);
       TestBed.flushEffects();
 
-      const style = component.vectorLayer.getStyle() as any;
+      const style = component.vectorLayer.getStyle() as Style;
       expect(style).toBeTruthy();
       const stroke = style.getStroke();
-      expect(stroke.getColor()).toBe('rgba(33, 150, 243, 1)');
+      expect(stroke!.getColor()).toBe('rgba(33, 150, 243, 1)');
     });
 
     it('should apply valid (blue) style to vector layer when polygon is valid', () => {
       component.validationResult.set({ isValid: true, errors: [] });
       TestBed.flushEffects();
 
-      const style = component.vectorLayer.getStyle() as any;
+      const style = component.vectorLayer.getStyle() as Style;
       expect(style).toBeTruthy();
       const stroke = style.getStroke();
-      expect(stroke.getColor()).toBe('rgba(33, 150, 243, 1)');
+      expect(stroke!.getColor()).toBe('rgba(33, 150, 243, 1)');
       const fill = style.getFill();
-      expect(fill.getColor()).toBe('rgba(33, 150, 243, 0.15)');
+      expect(fill!.getColor()).toBe('rgba(33, 150, 243, 0.15)');
     });
 
     it('should apply invalid (red) style to vector layer when polygon is invalid', () => {
@@ -255,12 +257,12 @@ describe('MapComponent', () => {
       });
       TestBed.flushEffects();
 
-      const style = component.vectorLayer.getStyle() as any;
+      const style = component.vectorLayer.getStyle() as Style;
       expect(style).toBeTruthy();
       const stroke = style.getStroke();
-      expect(stroke.getColor()).toBe('rgba(244, 67, 54, 1)');
+      expect(stroke!.getColor()).toBe('rgba(244, 67, 54, 1)');
       const fill = style.getFill();
-      expect(fill.getColor()).toBe('rgba(244, 67, 54, 0.15)');
+      expect(fill!.getColor()).toBe('rgba(244, 67, 54, 0.15)');
     });
 
     it('should switch from invalid to valid style when validationResult changes', () => {
@@ -271,15 +273,15 @@ describe('MapComponent', () => {
       });
       TestBed.flushEffects();
 
-      let style = component.vectorLayer.getStyle() as any;
-      expect(style.getStroke().getColor()).toBe('rgba(244, 67, 54, 1)');
+      let style = component.vectorLayer.getStyle() as Style;
+      expect(style.getStroke()!.getColor()).toBe('rgba(244, 67, 54, 1)');
 
       // Now set valid
       component.validationResult.set({ isValid: true, errors: [] });
       TestBed.flushEffects();
 
-      style = component.vectorLayer.getStyle() as any;
-      expect(style.getStroke().getColor()).toBe('rgba(33, 150, 243, 1)');
+      style = component.vectorLayer.getStyle() as Style;
+      expect(style.getStroke()!.getColor()).toBe('rgba(33, 150, 243, 1)');
     });
 
     it('should revert to valid style when polygon is cleared', () => {
@@ -292,8 +294,8 @@ describe('MapComponent', () => {
       component.clearPolygon();
       TestBed.flushEffects();
 
-      const style = component.vectorLayer.getStyle() as any;
-      expect(style.getStroke().getColor()).toBe('rgba(33, 150, 243, 1)');
+      const style = component.vectorLayer.getStyle() as Style;
+      expect(style.getStroke()!.getColor()).toBe('rgba(33, 150, 243, 1)');
     });
   });
 });

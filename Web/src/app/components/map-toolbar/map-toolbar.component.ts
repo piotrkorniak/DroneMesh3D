@@ -18,5 +18,5 @@ export class MapToolbarComponent {
   // Output events
   readonly draw = output<void>();
   readonly clear = output<void>();
-  readonly submit = output<void>();
+  readonly submitArea = output<void>();
 }

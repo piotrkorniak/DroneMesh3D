@@ -15,7 +15,7 @@ import { MapToolbarComponent } from './map-toolbar.component';
       [validationErrors]="validationErrors()"
       (draw)="onDraw()"
       (clear)="onClear()"
-      (submit)="onSubmit()"
+      (submitArea)="onSubmit()"
     />
   `,
 })

@@ -48,12 +48,13 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
 
   - [ ] 1.5 Utworzenie projektu .NET 10 Web API z MediatR, EF Core i typami przestrzennymi
     - Zainicjalizowanie projektu ASP.NET Core Web API (.NET 10, file-scoped namespaces, nullable reference types, global usings)
-    - Zainstalowanie pakietów: `MediatR`, `FluentValidation.DependencyInjectionExtensions`, `OneOf`, `Npgsql.EntityFrameworkCore.PostgreSQL`, `NetTopologySuite`, `Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite`
-    - Utworzenie encji `AreaEntity` (sealed class, Id Guid, CreatedAt DateTime, Geometry NTS Geometry)
+    - Zainstalowanie pakietów: `MediatR`, `FluentValidation.DependencyInjectionExtensions`, `OneOf`, `Npgsql.EntityFrameworkCore.PostgreSQL`, `NetTopologySuite`, `Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite`, `Swashbuckle.AspNetCore`
+    - Konfiguracja Swagger/OpenAPI w Program.cs (`AddEndpointsApiExplorer`, `AddSwaggerGen`, `UseSwagger`, `UseSwaggerUI`)
+    - Utworzenie encji `AreaEntity` (sealed class, Id Guid, CreatedAt DateTimeOffset, required Geometry NTS Geometry)
     - Utworzenie `AppDbContext` z primary constructor, konfiguracją PostGIS (`HasPostgresExtension("postgis")`) i typem `geometry(Polygon, 4326)`
     - Utworzenie DTO jako records: `CreateAreaRequest`, `AreaResponse`, `GeoJsonGeometry`, `ErrorResponse`, `ValidationErrorResponse`
     - Utworzenie interfejsów: `IAreaValidator`, `IAreaRepository`
-    - Konfiguracja `Program.cs`: MediatR + ValidationBehavior + FluentValidation + EF Core (Npgsql + UseNetTopologySuite) + CORS
+    - Konfiguracja `Program.cs`: MediatR + ValidationBehavior + FluentValidation + EF Core (Npgsql + UseNetTopologySuite) + CORS + Swagger
     - _Wymagania: 5.1, 6.1, 6.2, 6.3_
 
   - [ ] 1.6 Utworzenie migracji bazy danych dla tabeli Areas
@@ -203,24 +204,30 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     - _Wymagania: 3.6, 3.7_
 
 - [ ] 6. Implementacja komunikacji z API i wysyłki
-  - [ ] 6.1 Implementacja `AreaService` (frontend HTTP client)
-    - Utworzenie serwisu z `inject(HttpClient)` (Angular 21 pattern)
-    - Metoda `createArea(geojson: GeoJsonPolygon): Observable<CreateAreaResponse>`
-    - POST do `/api/areas`
+  - [ ] 6.1 Generowanie klienta HTTP z OpenAPI spec
+    - Zainstalowanie `@openapitools/openapi-generator-cli` jako devDependency
+    - Dodanie skryptu npm `api:generate` generującego klienta TypeScript-Angular z `http://localhost:5000/swagger/v1/swagger.json`
+    - Wygenerowany kod trafia do `src/app/api/` (services, models)
+    - Dodanie wygenerowanego katalogu do `.gitignore` lub commitowanie (decyzja: commitujemy dla CI)
     - _Wymagania: 4.4_
 
-  - [ ]* 6.2 Testy property-based dla zachowania współrzędnych w GeoJSON
+  - [ ] 6.2 Implementacja `AreaService` (wrapper nad wygenerowanym klientem)
+    - Utworzenie serwisu z `inject()` delegującego do wygenerowanego `AreasApiService`
+    - Metoda `createArea(geojson: CreateAreaRequest): Observable<AreaResponse>`
+    - _Wymagania: 4.4_
+
+  - [ ]* 6.3 Testy property-based dla zachowania współrzędnych w GeoJSON
     - **Property 5: Zachowanie współrzędnych w GeoJSON**
     - Generowanie prawidłowych tablic współrzędnych → konwersja do GeoJSON → sprawdzenie zachowania współrzędnych w oryginalnej kolejności
     - **Waliduje: Wymagania 4.2, 4.3**
 
-  - [ ] 6.3 Implementacja logiki wysyłania w `MapComponent`
+  - [ ] 6.4 Implementacja logiki wysyłania w `MapComponent`
     - Metoda `submitArea()`: konwersja współrzędnych OL → GeoJSON, wywołanie AreaService
     - Zarządzanie stanem przez signals: `isSubmitting.set(true)`, dezaktywacja submit
     - Obsługa sukcesu/błędu z aktualizacją signals
     - _Wymagania: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-  - [ ]* 6.4 Testy jednostkowe dla `AreaService`
+  - [ ]* 6.5 Testy jednostkowe dla `AreaService`
     - Test: wywołanie POST z prawidłowym URL i ładunkiem (provideHttpClientTesting)
     - Test: obsługa błędu sieciowego
     - _Wymagania: 4.4, 4.6_
@@ -283,6 +290,7 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
 - **MediatR pattern**: kontroler/endpoint jest cienki — logika w handlerach, walidacja w pipeline behavior
 - **Angular 21**: signals zamiast BehaviorSubject dla stanu komponentu, input()/output() zamiast @Input/@Output dekoratora, inject() zamiast constructor injection
 - **.NET 10**: primary constructors dla klas, records dla DTO/commands/queries, Guid.CreateVersion7() dla deterministycznie sortowanych ID, sealed classes
+- **OpenAPI**: backend eksponuje swagger.json, frontend generuje klienta HTTP z `openapi-generator-cli` (typescript-angular). Żadne ręczne pisanie HTTP calls.
 
 ## Task Dependency Graph
 
@@ -295,8 +303,8 @@ Implementacja przebiega w etapach: najpierw struktura projektu i modele danych, 
     { "id": 3, "tasks": ["2.2", "2.3", "2.4", "2.5", "2.6", "3.1"] },
     { "id": 4, "tasks": ["3.3", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10"] },
     { "id": 5, "tasks": ["5.1", "6.1", "7.1", "7.2"] },
-    { "id": 6, "tasks": ["5.2", "5.4", "6.3"] },
-    { "id": 7, "tasks": ["5.3", "5.5", "6.2", "6.4"] },
+    { "id": 6, "tasks": ["5.2", "5.4", "6.2", "6.4"] },
+    { "id": 7, "tasks": ["5.3", "5.5", "6.3", "6.5"] },
     { "id": 8, "tasks": ["7.3", "7.4"] },
     { "id": 9, "tasks": ["9.1", "9.2"] },
     { "id": 10, "tasks": ["9.3"] }

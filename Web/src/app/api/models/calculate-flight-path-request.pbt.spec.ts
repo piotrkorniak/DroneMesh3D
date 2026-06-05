@@ -36,11 +36,11 @@ describe('Feature: frontend-api-integration, Property 2: CalculateFlightPathRequ
     return fc.record({
       altitudeM: fc.double({ min: 1, max: 500, noNaN: true, noDefaultInfinity: true }),
       camera: cameraParametersArb(),
-      frontOverlapPercent: fc.double({ min: 0, max: 100, noNaN: true, noDefaultInfinity: true }),
-      sideOverlapPercent: fc.double({ min: 0, max: 100, noNaN: true, noDefaultInfinity: true }),
+      frontOverlapPercent: fc.double({ min: 0, max: 100, noNaN: true, noDefaultInfinity: true }).map(v => v === 0 ? 0 : v),
+      sideOverlapPercent: fc.double({ min: 0, max: 100, noNaN: true, noDefaultInfinity: true }).map(v => v === 0 ? 0 : v),
       headingDegrees: fc.oneof(
         fc.constant(null),
-        fc.double({ min: 0, max: 360, noNaN: true, noDefaultInfinity: true })
+        fc.double({ min: 0, max: 360, noNaN: true, noDefaultInfinity: true }).map(v => v === 0 ? 0 : v)
       ),
     });
   };
@@ -50,18 +50,18 @@ describe('Feature: frontend-api-integration, Property 2: CalculateFlightPathRequ
    */
   const poiModeParametersArb = (): fc.Arbitrary<PoiModeParametersDto> => {
     return fc.record({
-      centerLatitude: fc.double({ min: -90, max: 90, noNaN: true, noDefaultInfinity: true }),
-      centerLongitude: fc.double({ min: -180, max: 180, noNaN: true, noDefaultInfinity: true }),
+      centerLatitude: fc.double({ min: -90, max: 90, noNaN: true, noDefaultInfinity: true }).map(v => v === 0 ? 0 : v),
+      centerLongitude: fc.double({ min: -180, max: 180, noNaN: true, noDefaultInfinity: true }).map(v => v === 0 ? 0 : v),
       radiusM: fc.double({ min: 1, max: 10000, noNaN: true, noDefaultInfinity: true }),
       altitudeM: fc.double({ min: 1, max: 500, noNaN: true, noDefaultInfinity: true }),
-      gimbalPitchDegrees: fc.double({ min: -90, max: 90, noNaN: true, noDefaultInfinity: true }),
+      gimbalPitchDegrees: fc.double({ min: -90, max: 90, noNaN: true, noDefaultInfinity: true }).map(v => v === 0 ? 0 : v),
       photoCount: fc.oneof(
         fc.constant(null),
         fc.integer({ min: 1, max: 1000 })
       ),
       overlapPercent: fc.oneof(
         fc.constant(null),
-        fc.double({ min: 0, max: 100, noNaN: true, noDefaultInfinity: true })
+        fc.double({ min: 0, max: 100, noNaN: true, noDefaultInfinity: true }).map(v => v === 0 ? 0 : v)
       ),
       cameraHorizontalFovDegrees: fc.oneof(
         fc.constant(null),

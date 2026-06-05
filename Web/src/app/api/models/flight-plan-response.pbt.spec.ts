@@ -51,8 +51,8 @@ describe('Feature: frontend-api-integration, Property 1: FlightPlanResponse seri
       mode: fc.constantFrom('Grid', 'Poi'),
       waypoints: fc.array(arbWaypointDto(), { minLength: 0, maxLength: 50 }),
       statistics: arbFlightStatisticsDto(),
-      createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
-        .map(d => d.toISOString()),
+      createdAt: fc.integer({ min: new Date('2020-01-01').getTime(), max: new Date('2030-12-31').getTime() })
+        .map(ts => new Date(ts).toISOString()),
     });
   }
 

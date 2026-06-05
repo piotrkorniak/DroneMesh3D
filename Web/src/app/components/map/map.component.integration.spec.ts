@@ -116,6 +116,7 @@ describe('MapComponent Integration (end-to-end flow)', () => {
     component.vectorSource.addFeature(feature);
     component.hasPolygon.set(true);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private injected service for test
     const polygonValidator = (component as any).polygonValidator;
     const validationResult = polygonValidator.validate(validCoords4326);
     component.validationResult.set(validationResult);

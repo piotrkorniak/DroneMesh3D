@@ -1,7 +1,7 @@
-namespace DroneMesh3D.Core.Data;
-
-using Microsoft.EntityFrameworkCore;
 using DroneMesh3D.Core.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace DroneMesh3D.Core.Data;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {

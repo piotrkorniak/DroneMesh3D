@@ -5,6 +5,9 @@ import angular from 'angular-eslint';
 
 export default tseslint.config(
   {
+    ignores: ['dist/**', 'node_modules/**'],
+  },
+  {
     files: ['**/*.ts'],
     extends: [
       eslint.configs.recommended,

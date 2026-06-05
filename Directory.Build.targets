@@ -1,0 +1,5 @@
+<Project>
+  <Target Name="ConfigureGitHooks" BeforeTargets="Restore;Build" Condition="Exists('$(MSBuildThisFileDirectory).git')">
+    <Exec Command="git config core.hooksPath hooks" WorkingDirectory="$(MSBuildThisFileDirectory)" StandardOutputImportance="low" />
+  </Target>
+</Project>

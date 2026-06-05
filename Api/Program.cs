@@ -50,6 +50,14 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 
 var app = builder.Build();
 
+// Auto-apply pending migrations on startup (development only)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 app.UseExceptionHandler();
 app.UseCors();
 app.MapOpenApi();

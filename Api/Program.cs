@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using DroneMesh3D.Api.Behaviors;
 using DroneMesh3D.Api.Endpoints;
 using DroneMesh3D.Api.Middleware;
@@ -11,6 +12,10 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// JSON serialization
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // OpenAPI + Scalar
 builder.Services.AddOpenApi();

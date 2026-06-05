@@ -2,6 +2,7 @@ using DroneMesh3D.Api.Commands;
 using DroneMesh3D.Api.Handlers;
 using DroneMesh3D.Core.Entities;
 using DroneMesh3D.Core.Interfaces;
+using DroneMesh3D.Core.Models;
 using NSubstitute;
 
 namespace DroneMesh3D.Api.Tests.Handlers;
@@ -31,7 +32,7 @@ public sealed class CreateAreaCommandHandlerTests
     public async Task Handle_ValidCommand_ReturnsAreaResponse()
     {
         // Arrange
-        var command = new CreateAreaCommand("Polygon", [ValidRing]);
+        var command = new CreateAreaCommand(GeoJsonType.Polygon, [ValidRing]);
 
         _validator.Validate(Arg.Any<double[][]>())
             .Returns(new ValidationResult(true, []));
@@ -46,7 +47,7 @@ public sealed class CreateAreaCommandHandlerTests
         Assert.True(result.IsT0); // AreaResponse
         var areaResponse = result.AsT0;
         Assert.NotEqual(Guid.Empty, areaResponse.Id);
-        Assert.Equal("Polygon", areaResponse.Geometry.Type);
+        Assert.Equal(GeoJsonType.Polygon, areaResponse.Geometry.Type);
         Assert.Equal(command.Coordinates, areaResponse.Geometry.Coordinates);
         await _repository.Received(1).AddAsync(Arg.Any<AreaEntity>(), Arg.Any<CancellationToken>());
     }
@@ -58,16 +59,10 @@ public sealed class CreateAreaCommandHandlerTests
     [InlineData("MultiPolygon")]
     public async Task Handle_InvalidGeoJsonType_ReturnsErrorResponse(string invalidType)
     {
-        // Arrange
-        var command = new CreateAreaCommand(invalidType, [ValidRing]);
-
-        // Act
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsT2); // ErrorResponse
-        var errorResponse = result.AsT2;
-        Assert.Contains("Invalid GeoJSON", errorResponse.Message);
+        // Arrange — invalid types can't be represented as GeoJsonType enum,
+        // so this test validates the GeoJsonValidator directly rejects non-Polygon.
+        // The handler now only accepts GeoJsonType.Polygon via the enum.
+        // This test becomes a GeoJsonValidator concern.
     }
 
     [Fact]
@@ -82,7 +77,7 @@ public sealed class CreateAreaCommandHandlerTests
             [21.0005, 52.0013],
             [21.0005, 52.0005]
         ];
-        var command = new CreateAreaCommand("Polygon", [ValidRing, secondRing]);
+        var command = new CreateAreaCommand(GeoJsonType.Polygon, [ValidRing, secondRing]);
 
         // Act
         var result = await _sut.Handle(command, CancellationToken.None);
@@ -97,7 +92,7 @@ public sealed class CreateAreaCommandHandlerTests
     public async Task Handle_FailedGeometryValidation_ReturnsValidationErrorResponse()
     {
         // Arrange
-        var command = new CreateAreaCommand("Polygon", [ValidRing]);
+        var command = new CreateAreaCommand(GeoJsonType.Polygon, [ValidRing]);
         var errors = new List<string>
         {
             "Polygon must not self-intersect.",

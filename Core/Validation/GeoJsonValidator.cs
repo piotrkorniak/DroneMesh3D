@@ -1,24 +1,22 @@
+using DroneMesh3D.Core.Models;
+
 namespace DroneMesh3D.Core.Validation;
 
 /// <summary>
 ///     Validates the structural correctness of GeoJSON Polygon geometry.
-///     Checks: type field equals "Polygon", coordinates are present and non-empty,
+///     Checks: type field equals Polygon, coordinates are present and non-empty,
 ///     at least one ring exists, and the outer ring contains coordinate pairs.
 /// </summary>
 public static class GeoJsonValidator
 {
-    private const string PolygonType = "Polygon";
     private const int MinCoordinatesPerPoint = 2;
 
     /// <summary>
     ///     Validates that the given type and coordinates represent a structurally valid GeoJSON Polygon.
     /// </summary>
-    /// <param name="type">The GeoJSON geometry type (must be "Polygon").</param>
-    /// <param name="coordinates">The coordinate rings array [ring[vertex[lng, lat]]].</param>
-    /// <returns>True if the structure is valid; false otherwise.</returns>
-    public static bool IsValidPolygon(string? type, double[][]?[]? coordinates)
+    public static bool IsValidPolygon(GeoJsonType type, double[][]?[]? coordinates)
     {
-        if (!IsValidType(type))
+        if (type != GeoJsonType.Polygon)
             return false;
 
         if (!HasCoordinates(coordinates))
@@ -32,9 +30,6 @@ public static class GeoJsonValidator
 
         return true;
     }
-
-    private static bool IsValidType(string? type) =>
-        string.Equals(type, PolygonType, StringComparison.Ordinal);
 
     private static bool HasCoordinates(double[][]?[]? coordinates) =>
         coordinates is { Length: > 0 };

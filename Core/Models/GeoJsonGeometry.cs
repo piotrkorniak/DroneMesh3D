@@ -1,3 +1,3 @@
 namespace DroneMesh3D.Core.Models;
 
-public record GeoJsonGeometry(string Type, double[][][] Coordinates);
+public record GeoJsonGeometry(GeoJsonType Type, double[][][] Coordinates);

@@ -33,6 +33,6 @@ public static class GeometryConverter
             .Select(c => new[] { c.X, c.Y })
             .ToArray();
 
-        return new GeoJsonGeometry("Polygon", [coordinates]);
+        return new GeoJsonGeometry(GeoJsonType.Polygon, [coordinates]);
     }
 }

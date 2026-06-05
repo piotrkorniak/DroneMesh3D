@@ -50,6 +50,6 @@ public sealed class CreateAreaCommandHandler(
         return new AreaResponse(
             entity.Id,
             entity.CreatedAt,
-            new GeoJsonGeometry("Polygon", command.Coordinates));
+            new GeoJsonGeometry(GeoJsonType.Polygon, command.Coordinates));
     }
 }

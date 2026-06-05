@@ -2,6 +2,7 @@ using DroneMesh3D.Api.Commands;
 using DroneMesh3D.Api.DTOs;
 using DroneMesh3D.Api.Queries;
 using DroneMesh3D.Core.FlightPath;
+using DroneMesh3D.Core.MissionExport;
 using MediatR;
 
 namespace DroneMesh3D.Api.Endpoints;
@@ -21,6 +22,14 @@ public static class FlightPlansEndpoint
         group.MapGet("/{id:guid}", GetFlightPlan)
             .Produces<FlightPlanResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id:guid}/export", ExportMissionFile)
+            .WithSummary("Export mission file")
+            .WithDescription("Downloads the flight plan as a mission file. Supported formats: LitchiCsv, Kml, DjiWpml.")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
     }
 
     private static async Task<IResult> CalculateFlightPath(
@@ -79,5 +88,35 @@ public static class FlightPlansEndpoint
         var query = new GetFlightPlanQuery(id);
         var result = await mediator.Send(query, ct);
         return result is not null ? Results.Ok(result) : Results.NotFound();
+    }
+
+    private static async Task<IResult> ExportMissionFile(
+        Guid id,
+        ExportFormat? format,
+        IMediator mediator,
+        CancellationToken ct)
+    {
+        if (format is null)
+        {
+            var errors = new List<string>
+            {
+                "Format must be one of: LitchiCsv, Kml, DjiWpml"
+            };
+            return Results.UnprocessableEntity(new ValidationErrorResponse(errors));
+        }
+
+        var query = new ExportMissionFileQuery(id, format.Value);
+        var result = await mediator.Send(query, ct);
+
+        return result.Match(
+            missionFile => Results.File(
+                missionFile.Content,
+                missionFile.ContentType,
+                missionFile.FileName),
+            validationError => Results.UnprocessableEntity(validationError),
+            error => error.Message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                ? Results.NotFound()
+                : Results.Problem(statusCode: 500, detail: error.Message)
+        );
     }
 }

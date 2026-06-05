@@ -4,6 +4,7 @@ using DroneMesh3D.Api.Middleware;
 using DroneMesh3D.Core.Data;
 using DroneMesh3D.Core.FlightPath;
 using DroneMesh3D.Core.Interfaces;
+using DroneMesh3D.Core.MissionExport;
 using DroneMesh3D.Core.Repositories;
 using DroneMesh3D.Core.Validation;
 using FluentValidation;
@@ -48,6 +49,11 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IFlightPathCalculator, FlightPathCalculator>();
         services.AddTransient<GridFlightPathStrategy>();
         services.AddTransient<PoiFlightPathStrategy>();
+
+        services.AddSingleton<IMissionFileGenerator, LitchiCsvGenerator>();
+        services.AddSingleton<IMissionFileGenerator, KmlGenerator>();
+        services.AddSingleton<IMissionFileGenerator, DjiWpmlGenerator>();
+        services.AddSingleton<IMissionFileGeneratorFactory, MissionFileGeneratorFactory>();
 
         return services;
     }

@@ -9,7 +9,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "eslint .",
-    "prepare": "cd .. && git config core.hooksPath hooks",
+    "prepare": "cd .. && git config core.hooksPath hooks || true",
     "api:generate": "openapi-generator-cli generate -i http://localhost:5000/openapi/v1.json -g typescript-angular -o src/app/api --additional-properties=useSingleRequestParameter=true"
   },
   "private": true,

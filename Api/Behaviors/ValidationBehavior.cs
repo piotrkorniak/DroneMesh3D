@@ -13,7 +13,10 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
         RequestHandlerDelegate<TResponse> next,
         CancellationToken ct)
     {
-        if (!validators.Any()) return await next();
+        if (!validators.Any())
+        {
+            return await next();
+        }
 
         var context = new ValidationContext<TRequest>(request);
         var validationResults = await Task.WhenAll(
@@ -25,7 +28,9 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
             .ToList();
 
         if (failures.Count > 0)
+        {
             throw new ValidationException(failures);
+        }
 
         return await next();
     }

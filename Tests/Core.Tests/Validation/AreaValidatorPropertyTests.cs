@@ -133,7 +133,11 @@ public sealed class UnclosedRingArbitrary
             Generators.GenCoordinate().ArrayOf(vertexCount)
                 .Where(coords =>
                 {
-                    if (coords.Length < 3) return false;
+                    if (coords.Length < 3)
+                    {
+                        return false;
+                    }
+
                     var first = coords[0];
                     var last = coords[^1];
                     return first[0] != last[0] || first[1] != last[1];

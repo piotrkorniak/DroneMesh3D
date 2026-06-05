@@ -35,18 +35,31 @@ public sealed class GeometryConverterPropertyTests
         var geoJson = GeometryConverter.ToGeoJson(polygon);
 
         // Assert: Coordinates array has exactly one ring
-        if (geoJson.Coordinates.Length != 1) return false;
+        if (geoJson.Coordinates.Length != 1)
+        {
+            return false;
+        }
 
         var resultRing = geoJson.Coordinates[0];
 
         // Assert: Same number of coordinate pairs
-        if (resultRing.Length != ring.Length) return false;
+        if (resultRing.Length != ring.Length)
+        {
+            return false;
+        }
 
         // Assert: Each coordinate pair matches the original
         for (var i = 0; i < ring.Length; i++)
         {
-            if (Math.Abs(resultRing[i][0] - ring[i][0]) > 1e-10) return false;
-            if (Math.Abs(resultRing[i][1] - ring[i][1]) > 1e-10) return false;
+            if (Math.Abs(resultRing[i][0] - ring[i][0]) > 1e-10)
+            {
+                return false;
+            }
+
+            if (Math.Abs(resultRing[i][1] - ring[i][1]) > 1e-10)
+            {
+                return false;
+            }
         }
 
         return true;
@@ -63,16 +76,28 @@ public sealed class GeometryConverterPropertyTests
         var polygon = GeometryConverter.ToPolygon(ring);
 
         // SRID must be 4326 for PostGIS compatibility (Requirement 6.2 context)
-        if (polygon.SRID != 4326) return false;
+        if (polygon.SRID != 4326)
+        {
+            return false;
+        }
 
         // Geometry must not be empty
-        if (polygon.IsEmpty) return false;
+        if (polygon.IsEmpty)
+        {
+            return false;
+        }
 
         // Must be a Polygon type
-        if (polygon.GeometryType != "Polygon") return false;
+        if (polygon.GeometryType != "Polygon")
+        {
+            return false;
+        }
 
         // Must have the correct number of coordinates (ring is closed, NTS preserves this)
-        if (polygon.Coordinates.Length != ring.Length) return false;
+        if (polygon.Coordinates.Length != ring.Length)
+        {
+            return false;
+        }
 
         return true;
     }
@@ -90,18 +115,31 @@ public sealed class GeometryConverterPropertyTests
         var geoJson = GeometryConverter.ToGeoJson(polygon);
 
         // Type must be "Polygon"
-        if (geoJson.Type != GeoJsonType.Polygon) return false;
+        if (geoJson.Type != GeoJsonType.Polygon)
+        {
+            return false;
+        }
 
         // Must have exactly one ring (outer ring, no holes)
-        if (geoJson.Coordinates.Length != 1) return false;
+        if (geoJson.Coordinates.Length != 1)
+        {
+            return false;
+        }
 
         // Ring must not be empty
-        if (geoJson.Coordinates[0].Length == 0) return false;
+        if (geoJson.Coordinates[0].Length == 0)
+        {
+            return false;
+        }
 
         // Each coordinate must have exactly 2 elements (longitude, latitude)
         foreach (var coord in geoJson.Coordinates[0])
+        {
             if (coord.Length != 2)
+            {
                 return false;
+            }
+        }
 
         return true;
     }
@@ -129,18 +167,39 @@ public sealed class GeometryConverterPropertyTests
         var resultRing = geoJson.Coordinates[0];
 
         // ID must be non-empty
-        if (entity.Id == Guid.Empty) return false;
+        if (entity.Id == Guid.Empty)
+        {
+            return false;
+        }
 
         // CreatedAt must be a valid (recent) timestamp
-        if (entity.CreatedAt == default) return false;
-        if (entity.CreatedAt > DateTimeOffset.UtcNow.AddSeconds(1)) return false;
+        if (entity.CreatedAt == default)
+        {
+            return false;
+        }
+
+        if (entity.CreatedAt > DateTimeOffset.UtcNow.AddSeconds(1))
+        {
+            return false;
+        }
 
         // Coordinates must match original
-        if (resultRing.Length != ring.Length) return false;
+        if (resultRing.Length != ring.Length)
+        {
+            return false;
+        }
+
         for (var i = 0; i < ring.Length; i++)
         {
-            if (Math.Abs(resultRing[i][0] - ring[i][0]) > 1e-10) return false;
-            if (Math.Abs(resultRing[i][1] - ring[i][1]) > 1e-10) return false;
+            if (Math.Abs(resultRing[i][0] - ring[i][0]) > 1e-10)
+            {
+                return false;
+            }
+
+            if (Math.Abs(resultRing[i][1] - ring[i][1]) > 1e-10)
+            {
+                return false;
+            }
         }
 
         return true;

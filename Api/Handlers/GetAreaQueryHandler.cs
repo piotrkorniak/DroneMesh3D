@@ -12,7 +12,10 @@ public sealed class GetAreaQueryHandler(IAreaRepository areaRepository)
     public async Task<AreaResponse?> Handle(GetAreaQuery query, CancellationToken ct)
     {
         var entity = await areaRepository.GetByIdAsync(query.Id, ct);
-        if (entity is null) return null;
+        if (entity is null)
+        {
+            return null;
+        }
 
         return new AreaResponse(
             entity.Id,

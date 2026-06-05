@@ -18,21 +18,31 @@ public sealed class AreaValidator : IAreaValidator
         var errors = new List<string>();
 
         if (!HasMinimumVertices(ring))
+        {
             errors.Add("Polygon must have at least 3 vertices.");
+        }
 
         if (!IsClosed(ring))
+        {
             errors.Add("Polygon must be closed.");
+        }
 
         if (HasSelfIntersection(ring))
+        {
             errors.Add("Polygon must not self-intersect.");
+        }
 
         var areaSqm = CalculateAreaSqm(ring);
 
         if (areaSqm > MaxAreaHectares * 10000)
+        {
             errors.Add($"Polygon area exceeds maximum of {MaxAreaHectares} hectares.");
+        }
 
         if (areaSqm < MinAreaSqm)
+        {
             errors.Add($"Polygon area is below minimum of {MinAreaSqm} square meters.");
+        }
 
         return new ValidationResult(errors.Count == 0, errors);
     }
@@ -45,7 +55,11 @@ public sealed class AreaValidator : IAreaValidator
 
     public bool IsClosed(double[][] ring)
     {
-        if (ring.Length < 2) return false;
+        if (ring.Length < 2)
+        {
+            return false;
+        }
+
         var first = ring[0];
         var last = ring[^1];
         return first[0] == last[0] && first[1] == last[1];
@@ -54,7 +68,10 @@ public sealed class AreaValidator : IAreaValidator
     public bool HasSelfIntersection(double[][] ring)
     {
         var n = ring.Length;
-        if (n < 4) return false;
+        if (n < 4)
+        {
+            return false;
+        }
 
         var edgeCount = n - 1;
 
@@ -63,10 +80,14 @@ public sealed class AreaValidator : IAreaValidator
         {
             // Skip adjacent edges (first and last edge are adjacent in a closed polygon)
             if (i == 0 && j == edgeCount - 1 && IsClosed(ring))
+            {
                 continue;
+            }
 
             if (SegmentsIntersect(ring[i], ring[i + 1], ring[j], ring[j + 1]))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -74,12 +95,18 @@ public sealed class AreaValidator : IAreaValidator
 
     public double CalculateAreaSqm(double[][] ring)
     {
-        if (ring.Length < 3) return 0;
+        if (ring.Length < 3)
+        {
+            return 0;
+        }
 
         // Get the ring without the closing point if it's closed
         var points = IsClosed(ring) ? ring[..^1] : ring;
 
-        if (points.Length < 3) return 0;
+        if (points.Length < 3)
+        {
+            return 0;
+        }
 
         return ComputeSphericalArea(points);
     }
@@ -119,13 +146,30 @@ public sealed class AreaValidator : IAreaValidator
 
         if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
             ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)))
+        {
             return true;
+        }
 
         // Check collinear cases
-        if (d1 == 0 && OnSegment(p3, p4, p1)) return true;
-        if (d2 == 0 && OnSegment(p3, p4, p2)) return true;
-        if (d3 == 0 && OnSegment(p1, p2, p3)) return true;
-        if (d4 == 0 && OnSegment(p1, p2, p4)) return true;
+        if (d1 == 0 && OnSegment(p3, p4, p1))
+        {
+            return true;
+        }
+
+        if (d2 == 0 && OnSegment(p3, p4, p2))
+        {
+            return true;
+        }
+
+        if (d3 == 0 && OnSegment(p1, p2, p3))
+        {
+            return true;
+        }
+
+        if (d4 == 0 && OnSegment(p1, p2, p4))
+        {
+            return true;
+        }
 
         return false;
     }

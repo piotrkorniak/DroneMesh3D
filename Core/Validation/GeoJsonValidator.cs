@@ -17,16 +17,24 @@ public static class GeoJsonValidator
     public static bool IsValidPolygon(GeoJsonType type, double[][]?[]? coordinates)
     {
         if (type != GeoJsonType.Polygon)
+        {
             return false;
+        }
 
         if (!HasCoordinates(coordinates))
+        {
             return false;
+        }
 
         if (!HasNonEmptyRing(coordinates!))
+        {
             return false;
+        }
 
         if (!AllRingsHaveValidCoordinates(coordinates!))
+        {
             return false;
+        }
 
         return true;
     }
@@ -42,11 +50,17 @@ public static class GeoJsonValidator
         foreach (var ring in coordinates)
         {
             if (ring is null || ring.Length == 0)
+            {
                 return false;
+            }
 
             foreach (var point in ring)
+            {
                 if (point is null || point.Length < MinCoordinatesPerPoint)
+                {
                     return false;
+                }
+            }
         }
 
         return true;

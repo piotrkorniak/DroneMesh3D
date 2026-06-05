@@ -15,7 +15,7 @@ if [ -n "$STAGED_CS" ]; then
   echo "Running CleanupCode on staged C# files..."
   dotnet jb cleanupcode DroneMesh3D.slnx \
     --include="$(echo "$STAGED_CS" | tr '\n' ';')" \
-    --profile="Built-in: Reformat Code" \
+    --profile="Built-in: Full Cleanup" \
     --dotnetcore="C:/Program Files/dotnet/dotnet.exe" \
     --no-build 2>/dev/null
 

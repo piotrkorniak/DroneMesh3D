@@ -1,5 +1,6 @@
 #!/bin/sh
-# Pre-commit hook: format, lint, build, test
+# Pre-commit hook: format + lint only (fast)
+# Build and tests run in pre-push hook and CI.
 # Install: git config core.hooksPath hooks (auto-installed by dotnet build / npm install)
 
 set -e
@@ -16,7 +17,7 @@ if [ -n "$STAGED_CS" ]; then
   dotnet jb cleanupcode DroneMesh3D.slnx \
     --include="$(echo "$STAGED_CS" | tr '\n' ';')" \
     --profile="Built-in: Full Cleanup" \
-    --dotnetcore="C:/Program Files/dotnet/dotnet.exe" \
+    --dotnetcore="$(which dotnet)" \
     --no-build 2>/dev/null
 
   # Check if cleanupcode modified any files
@@ -37,25 +38,5 @@ if [ -n "$STAGED_TS" ]; then
   FILES_FOR_LINT=$(echo "$STAGED_TS" | sed 's|^Web/||' | tr '\n' ' ')
   (cd Web && npx eslint --max-warnings=0 $FILES_FOR_LINT)
 fi
-
-echo "=== Pre-commit: Build ==="
-
-# --- Backend build ---
-echo "Building .NET solution..."
-dotnet build DroneMesh3D.slnx --configuration Release --nologo -v q
-
-# --- Frontend build ---
-echo "Building Angular app..."
-(cd Web && npx ng build --configuration production)
-
-echo "=== Pre-commit: Tests ==="
-
-# --- Backend tests (skip integration tests that need DB) ---
-echo "Running .NET tests..."
-dotnet test DroneMesh3D.slnx --configuration Release --no-build --nologo -v q --filter "Category!=Integration"
-
-# --- Frontend tests ---
-echo "Running Angular tests..."
-(cd Web && npx ng test --watch=false --browsers=ChromeHeadless)
 
 echo "=== Pre-commit: All checks passed ==="

@@ -26,6 +26,7 @@ public static class GeometryConverter
 
     /// <summary>
     ///     Converts an NTS Polygon back to a GeoJsonGeometry record.
+    ///     Note: Z coordinate (altitude) is intentionally dropped — this system operates in 2D only.
     /// </summary>
     public static GeoJsonGeometry ToGeoJson(Geometry geometry)
     {

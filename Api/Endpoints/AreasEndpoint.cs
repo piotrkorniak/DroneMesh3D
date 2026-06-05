@@ -26,6 +26,11 @@ public static class AreasEndpoint
         IMediator mediator,
         CancellationToken ct)
     {
+        if (!Enum.IsDefined(request.Type))
+        {
+            return Results.BadRequest(new ErrorResponse("Invalid GeoJSON geometry type."));
+        }
+
         var command = new CreateAreaCommand(request.Type, request.Coordinates);
         var result = await mediator.Send(command, ct);
 

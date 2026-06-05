@@ -6,7 +6,7 @@
     <option name="PASS_PARENT_ENVS" value="1" />
     <envs>
       <env name="ASPNETCORE_ENVIRONMENT" value="Development" />
-      <env name="ConnectionStrings__Default" value="Host=localhost;Database=dronemesh3d;Username=postgres;Password=YourStr0ngP@ssword" />
+      <env name="ConnectionStrings__Default" value="Host=localhost;Database=dronemesh3d;Username=postgres;Password=${DRONEMESH_DB_PASSWORD}" />
     </envs>
     <option name="USE_EXTERNAL_CONSOLE" value="0" />
     <option name="USE_MONO" value="0" />

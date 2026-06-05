@@ -3,12 +3,10 @@ import {
   Component,
   computed,
   effect,
-  ElementRef,
   inject,
   OnDestroy,
   OnInit,
   signal,
-  viewChild,
 } from '@angular/core';
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -48,8 +46,6 @@ export class MapComponent implements OnInit, OnDestroy {
   readonly vectorLayer = new VectorLayer({ source: this.vectorSource });
   private drawInteraction: Draw | null = null;
   private modifyInteraction: Modify | null = null;
-
-  private readonly mapContainer = viewChild<ElementRef<HTMLDivElement>>('mapContainer');
 
   // Validation visual feedback styles
   private readonly validStyle = new Style({

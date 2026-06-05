@@ -143,6 +143,112 @@ public sealed class AreasEndpointTests : IClassFixture<AreasEndpointTests.AreasA
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task ListAreas_EmptyDatabase_Returns200WithEmptyArray()
+    {
+        // Arrange — use a fresh factory with a clean database
+        await using var freshFactory = new AreasApiFactory();
+        using var freshClient = freshFactory.CreateClient();
+
+        // Clear all areas to ensure empty state
+        using var scope = freshFactory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Areas.RemoveRange(db.Areas);
+        await db.SaveChangesAsync();
+
+        // Act
+        var response = await freshClient.GetAsync("/api/areas");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<List<AreaResponse>>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.Empty(body);
+    }
+
+    [Fact]
+    public async Task ListAreas_MultipleAreas_ReturnsOrderedByCreatedAtDescending()
+    {
+        // Arrange — create multiple areas with different timestamps
+        var request = new CreateAreaRequest(GeoJsonType.Polygon, ValidPolygonCoordinates);
+
+        var response1 = await _client.PostAsJsonAsync("/api/areas", request, JsonOptions);
+        response1.EnsureSuccessStatusCode();
+        var area1 = await response1.Content.ReadFromJsonAsync<AreaResponse>(JsonOptions);
+        Assert.NotNull(area1);
+
+        // Small delay to ensure distinct CreatedAt values
+        await Task.Delay(50);
+
+        var response2 = await _client.PostAsJsonAsync("/api/areas", request, JsonOptions);
+        response2.EnsureSuccessStatusCode();
+        var area2 = await response2.Content.ReadFromJsonAsync<AreaResponse>(JsonOptions);
+        Assert.NotNull(area2);
+
+        await Task.Delay(50);
+
+        var response3 = await _client.PostAsJsonAsync("/api/areas", request, JsonOptions);
+        response3.EnsureSuccessStatusCode();
+        var area3 = await response3.Content.ReadFromJsonAsync<AreaResponse>(JsonOptions);
+        Assert.NotNull(area3);
+
+        // Act
+        var listResponse = await _client.GetAsync("/api/areas");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+
+        var areas = await listResponse.Content.ReadFromJsonAsync<List<AreaResponse>>(JsonOptions);
+        Assert.NotNull(areas);
+        Assert.True(areas.Count >= 3);
+
+        // Verify ordering: CreatedAt should be in descending order (newest first)
+        for (var i = 0; i < areas.Count - 1; i++)
+        {
+            Assert.True(areas[i].CreatedAt >= areas[i + 1].CreatedAt,
+                $"Areas not ordered by CreatedAt descending at index {i}: {areas[i].CreatedAt} should be >= {areas[i + 1].CreatedAt}");
+        }
+
+        // Verify the most recently created area is first
+        Assert.Equal(area3.Id, areas[0].Id);
+    }
+
+    [Fact]
+    public async Task ListAreas_ResponseShapeMatchesAreaResponseContract()
+    {
+        // Arrange — create an area to ensure at least one exists
+        var request = new CreateAreaRequest(GeoJsonType.Polygon, ValidPolygonCoordinates);
+        var createResponse = await _client.PostAsJsonAsync("/api/areas", request, JsonOptions);
+        createResponse.EnsureSuccessStatusCode();
+
+        // Act
+        var listResponse = await _client.GetAsync("/api/areas");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+
+        var areas = await listResponse.Content.ReadFromJsonAsync<List<AreaResponse>>(JsonOptions);
+        Assert.NotNull(areas);
+        Assert.NotEmpty(areas);
+
+        // Verify each area has the expected DTO shape
+        foreach (var area in areas)
+        {
+            // Id: GUID, not empty
+            Assert.NotEqual(Guid.Empty, area.Id);
+
+            // CreatedAt: valid DateTimeOffset
+            Assert.True(area.CreatedAt > DateTimeOffset.MinValue);
+
+            // Geometry: GeoJsonGeometry with Type and Coordinates
+            Assert.NotNull(area.Geometry);
+            Assert.Equal(GeoJsonType.Polygon, area.Geometry.Type);
+            Assert.NotNull(area.Geometry.Coordinates);
+            Assert.NotEmpty(area.Geometry.Coordinates);
+        }
+    }
+
     /// <summary>
     ///     Custom WebApplicationFactory that uses the real PostgreSQL/PostGIS database
     ///     from the test connection string (CI service container or local Docker).

@@ -260,6 +260,33 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
     }
 
     /// <summary>
+    ///     Helper method that creates a flight plan for a given area and returns the response.
+    /// </summary>
+    private async Task<FlightPlanResponse> CreateFlightPlanForAreaAsync(Guid areaId)
+    {
+        var request = new CalculateFlightPathRequest(
+            areaId,
+            FlightMode.Poi,
+            null,
+            new PoiModeParametersDto(
+                51.1,
+                17.04,
+                100,
+                60,
+                -60,
+                12,
+                null,
+                null,
+                null));
+
+        var response = await _client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        var flightPlan = await response.Content.ReadFromJsonAsync<FlightPlanResponse>(JsonOptions);
+        Assert.NotNull(flightPlan);
+        return flightPlan;
+    }
+
+    /// <summary>
     ///     Custom WebApplicationFactory that uses the real PostgreSQL/PostGIS database
     ///     from the test connection string (CI service container or local Docker).
     /// </summary>
@@ -312,4 +339,126 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
             builder.UseEnvironment("Testing");
         }
     }
+
+    #region GET /api/flight-plans (list endpoint)
+
+    [Fact]
+    public async Task List_NoFlightPlansExist_Returns200WithEmptyArray()
+    {
+        // Arrange — use a non-existent area ID so no plans match
+        var emptyAreaId = Guid.NewGuid();
+
+        // Act
+        var response = await _client.GetAsync($"/api/flight-plans?areaId={emptyAreaId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.Empty(body);
+    }
+
+    [Fact]
+    public async Task List_FilterByAreaId_ReturnsOnlyMatchingFlightPlans()
+    {
+        // Arrange — create two areas, each with a flight plan
+        var areaId1 = await CreateAreaAsync();
+        var areaId2 = await CreateAreaAsync();
+
+        await CreateFlightPlanForAreaAsync(areaId1);
+        await CreateFlightPlanForAreaAsync(areaId2);
+
+        // Act — filter by areaId1
+        var response = await _client.GetAsync($"/api/flight-plans?areaId={areaId1}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.NotEmpty(body);
+        Assert.All(body, fp => Assert.Equal(areaId1, fp.AreaId));
+    }
+
+    [Fact]
+    public async Task List_InvalidGuidAreaId_Returns422WithValidationErrorResponse()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/flight-plans?areaId=not-a-guid");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<ValidationErrorResponse>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.NotEmpty(body.Errors);
+        Assert.Contains(body.Errors, e => e.Contains("GUID", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task List_OrderedByCreatedAtDescending()
+    {
+        // Arrange — create an area and multiple flight plans with slight delay to ensure distinct CreatedAt
+        var areaId = await CreateAreaAsync();
+
+        await CreateFlightPlanForAreaAsync(areaId);
+        await Task.Delay(50); // small delay to guarantee ordering difference
+        await CreateFlightPlanForAreaAsync(areaId);
+        await Task.Delay(50);
+        await CreateFlightPlanForAreaAsync(areaId);
+
+        // Act
+        var response = await _client.GetAsync($"/api/flight-plans?areaId={areaId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.True(body.Count >= 3);
+
+        // Verify descending order by CreatedAt
+        for (var i = 0; i < body.Count - 1; i++)
+        {
+            Assert.True(body[i].CreatedAt >= body[i + 1].CreatedAt,
+                $"Expected descending order: item[{i}].CreatedAt ({body[i].CreatedAt}) should be >= item[{i + 1}].CreatedAt ({body[i + 1].CreatedAt})");
+        }
+    }
+
+    [Fact]
+    public async Task List_PaginationWithLimitAndOffset_ReturnsCorrectSubset()
+    {
+        // Arrange — create an area with 4 flight plans
+        var areaId = await CreateAreaAsync();
+
+        for (var i = 0; i < 4; i++)
+        {
+            await CreateFlightPlanForAreaAsync(areaId);
+            await Task.Delay(50); // ensure distinct CreatedAt values
+        }
+
+        // Act — get all to know the full list, then paginate
+        var allResponse = await _client.GetAsync($"/api/flight-plans?areaId={areaId}");
+        allResponse.EnsureSuccessStatusCode();
+        var allPlans = await allResponse.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(allPlans);
+        Assert.True(allPlans.Count >= 4);
+
+        // Request with limit=2, offset=1
+        var paginatedResponse = await _client.GetAsync($"/api/flight-plans?areaId={areaId}&limit=2&offset=1");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, paginatedResponse.StatusCode);
+
+        var paginatedBody = await paginatedResponse.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(paginatedBody);
+        Assert.Equal(2, paginatedBody.Count);
+
+        // The paginated results should match items at positions 1 and 2 from the full list
+        Assert.Equal(allPlans[1].Id, paginatedBody[0].Id);
+        Assert.Equal(allPlans[2].Id, paginatedBody[1].Id);
+    }
+
+    #endregion
 }

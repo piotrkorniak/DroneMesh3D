@@ -13,6 +13,10 @@ public static class FlightPlansEndpoint
     {
         var group = app.MapGroup("/api/flight-plans").WithTags("FlightPlans");
 
+        group.MapGet("/", ListFlightPlans)
+            .Produces<List<FlightPlanResponse>>()
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+
         group.MapPost("/", CalculateFlightPath)
             .Produces<FlightPlanResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status404NotFound)
@@ -30,6 +34,34 @@ public static class FlightPlansEndpoint
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
+    }
+
+    private static async Task<IResult> ListFlightPlans(
+        string? areaId,
+        int? limit,
+        int? offset,
+        ISender sender,
+        CancellationToken ct)
+    {
+        Guid? parsedAreaId = null;
+        if (areaId is not null)
+        {
+            if (!Guid.TryParse(areaId, out var guid))
+            {
+                return Results.UnprocessableEntity(new ValidationErrorResponse(
+                    ["areaId must be a valid GUID."]));
+            }
+
+            parsedAreaId = guid;
+        }
+
+        var clampedLimit = Math.Clamp(limit ?? 100, 1, 100);
+        var clampedOffset = Math.Max(offset ?? 0, 0);
+
+        var query = new ListFlightPlansQuery(parsedAreaId, clampedLimit, clampedOffset);
+        var result = await sender.Send(query, ct);
+
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> CalculateFlightPath(

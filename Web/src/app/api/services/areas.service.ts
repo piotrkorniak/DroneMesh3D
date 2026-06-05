@@ -25,4 +25,8 @@ export class AreasApiService {
   getArea(id: string): Observable<AreaResponse> {
     return this.http.get<AreaResponse>(`${this.basePath}/areas/${id}`);
   }
+
+  listAreas(): Observable<AreaResponse[]> {
+    return this.http.get<AreaResponse[]>(`${this.basePath}/areas`);
+  }
 }

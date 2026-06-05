@@ -17,4 +17,20 @@ public sealed class FlightPlanRepository(AppDbContext context) : IFlightPlanRepo
         => await context.FlightPlans
             .Include(e => e.Area)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
+
+    public async Task<List<FlightPlanEntity>> ListAsync(Guid? areaId, int limit, int offset, CancellationToken ct = default)
+    {
+        var query = context.FlightPlans.AsQueryable();
+
+        if (areaId.HasValue)
+        {
+            query = query.Where(e => e.AreaId == areaId.Value);
+        }
+
+        return await query
+            .OrderByDescending(e => e.CreatedAt)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
 }

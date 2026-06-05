@@ -11,6 +11,9 @@ public static class AreasEndpoint
     {
         var group = app.MapGroup("/api/areas").WithTags("Areas");
 
+        group.MapGet("/", ListAreas)
+            .Produces<List<AreaResponse>>();
+
         group.MapPost("/", CreateArea)
             .Produces<AreaResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -19,6 +22,14 @@ public static class AreasEndpoint
         group.MapGet("/{id:guid}", GetArea)
             .Produces<AreaResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound);
+    }
+
+    private static async Task<IResult> ListAreas(
+        IMediator mediator,
+        CancellationToken ct)
+    {
+        var result = await mediator.Send(new ListAreasQuery(), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> CreateArea(

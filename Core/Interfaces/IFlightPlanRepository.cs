@@ -6,4 +6,5 @@ public interface IFlightPlanRepository
 {
     Task AddAsync(FlightPlanEntity entity, CancellationToken ct = default);
     Task<FlightPlanEntity?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<List<FlightPlanEntity>> ListAsync(Guid? areaId, int limit, int offset, CancellationToken ct = default);
 }

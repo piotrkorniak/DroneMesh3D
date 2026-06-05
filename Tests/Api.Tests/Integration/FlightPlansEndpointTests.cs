@@ -1,54 +1,20 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using DroneMesh3D.Api.DTOs;
-using DroneMesh3D.Core.Data;
 using DroneMesh3D.Core.FlightPath;
-using DroneMesh3D.Core.Models;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace DroneMesh3D.Api.Tests.Integration;
 
-[Trait("Category", "Integration")]
-public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpointTests.FlightPlansApiFactory>, IDisposable
+public sealed class FlightPlansEndpointTests : IntegrationTestBase
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    public FlightPlansEndpointTests(DroneMesh3DApiFactory factory) : base(factory)
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() }
-    };
-
-    // A valid closed polygon ring (~200m x 200m square in Wroclaw)
-    private static readonly double[][][] ValidPolygonCoordinates =
-    [
-        [
-            [17.0300, 51.1000],
-            [17.0320, 51.1000],
-            [17.0320, 51.1018],
-            [17.0300, 51.1018],
-            [17.0300, 51.1000]
-        ]
-    ];
-
-    private readonly HttpClient _client;
-    private readonly FlightPlansApiFactory _factory;
-
-    public FlightPlansEndpointTests(FlightPlansApiFactory factory)
-    {
-        _factory = factory;
-        _client = factory.CreateClient();
     }
-
-    public void Dispose() => _client.Dispose();
 
     [Fact]
     public async Task Post_ValidGridRequest_Returns201WithFlightPlanResponse()
     {
-        // Arrange — create an area first
+        // Arrange
         var areaId = await CreateAreaAsync();
 
         var request = new CalculateFlightPathRequest(
@@ -56,18 +22,14 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
             FlightMode.Grid,
             new GridModeParametersDto(
                 80,
-                new CameraParametersDto(
-                    13.2,
-                    8.8,
-                    5472,
-                    3648),
+                new CameraParametersDto(13.2, 8.8, 5472, 3648),
                 78,
                 70,
                 null),
             null);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
+        var response = await Client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -91,26 +53,17 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
     [Fact]
     public async Task Post_ValidPoiRequest_Returns201WithFlightPlanResponse()
     {
-        // Arrange — create an area first
+        // Arrange
         var areaId = await CreateAreaAsync();
 
         var request = new CalculateFlightPathRequest(
             areaId,
             FlightMode.Poi,
             null,
-            new PoiModeParametersDto(
-                51.1,
-                17.04,
-                100,
-                60,
-                -60,
-                12,
-                null,
-                null,
-                null));
+            new PoiModeParametersDto(51.1, 17.04, 100, 60, -60, 12, null, null, null));
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
+        var response = await Client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -132,7 +85,7 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
     [Fact]
     public async Task Post_InvalidParameters_AltitudeAbove120_Returns400()
     {
-        // Arrange — create an area first
+        // Arrange
         var areaId = await CreateAreaAsync();
 
         var request = new CalculateFlightPathRequest(
@@ -140,22 +93,16 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
             FlightMode.Grid,
             new GridModeParametersDto(
                 150, // exceeds 120m limit
-                new CameraParametersDto(
-                    13.2,
-                    8.8,
-                    5472,
-                    3648),
+                new CameraParametersDto(13.2, 8.8, 5472, 3648),
                 78,
                 70,
                 null),
             null);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
+        var response = await Client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
 
         // Assert
-        // The ValidationBehavior throws a FluentValidation.ValidationException which is caught
-        // by the GlobalExceptionHandler middleware and returned as HTTP 400 BadRequest.
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<ValidationErrorResponse>(JsonOptions);
@@ -167,7 +114,7 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
     [Fact]
     public async Task Post_NonExistentArea_Returns404()
     {
-        // Arrange — use a random non-existent area ID
+        // Arrange
         var nonExistentAreaId = Guid.NewGuid();
 
         var request = new CalculateFlightPathRequest(
@@ -175,18 +122,14 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
             FlightMode.Grid,
             new GridModeParametersDto(
                 80,
-                new CameraParametersDto(
-                    13.2,
-                    8.8,
-                    5472,
-                    3648),
+                new CameraParametersDto(13.2, 8.8, 5472, 3648),
                 78,
                 70,
                 null),
             null);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
+        var response = await Client.PostAsJsonAsync("/api/flight-plans", request, JsonOptions);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -195,31 +138,12 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
     [Fact]
     public async Task Get_ExistingFlightPlan_Returns200WithFlightPlanResponse()
     {
-        // Arrange — create an area and a flight plan
+        // Arrange
         var areaId = await CreateAreaAsync();
-
-        var createRequest = new CalculateFlightPathRequest(
-            areaId,
-            FlightMode.Poi,
-            null,
-            new PoiModeParametersDto(
-                51.1,
-                17.04,
-                100,
-                60,
-                -60,
-                12,
-                null,
-                null,
-                null));
-
-        var createResponse = await _client.PostAsJsonAsync("/api/flight-plans", createRequest, JsonOptions);
-        createResponse.EnsureSuccessStatusCode();
-        var created = await createResponse.Content.ReadFromJsonAsync<FlightPlanResponse>(JsonOptions);
-        Assert.NotNull(created);
+        var created = await CreateFlightPlanAsync(areaId);
 
         // Act
-        var response = await _client.GetAsync($"/api/flight-plans/{created.Id}");
+        var response = await Client.GetAsync($"/api/flight-plans/{created.Id}");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -240,76 +164,128 @@ public sealed class FlightPlansEndpointTests : IClassFixture<FlightPlansEndpoint
         var nonExistentId = Guid.NewGuid();
 
         // Act
-        var response = await _client.GetAsync($"/api/flight-plans/{nonExistentId}");
+        var response = await Client.GetAsync($"/api/flight-plans/{nonExistentId}");
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    /// <summary>
-    ///     Helper method that creates an area and returns its ID.
-    /// </summary>
-    private async Task<Guid> CreateAreaAsync()
+    #region GET /api/flight-plans (list endpoint)
+
+    [Fact]
+    public async Task List_NoFlightPlansExist_Returns200WithEmptyArray()
     {
-        var areaRequest = new CreateAreaRequest(GeoJsonType.Polygon, ValidPolygonCoordinates);
-        var areaResponse = await _client.PostAsJsonAsync("/api/areas", areaRequest, JsonOptions);
-        areaResponse.EnsureSuccessStatusCode();
-        var area = await areaResponse.Content.ReadFromJsonAsync<AreaResponse>(JsonOptions);
-        Assert.NotNull(area);
-        return area.Id;
+        // Arrange — use a non-existent area ID so no plans match
+        var emptyAreaId = Guid.NewGuid();
+
+        // Act
+        var response = await Client.GetAsync($"/api/flight-plans?areaId={emptyAreaId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.Empty(body);
     }
 
-    /// <summary>
-    ///     Custom WebApplicationFactory that uses the real PostgreSQL/PostGIS database
-    ///     from the test connection string (CI service container or local Docker).
-    /// </summary>
-    public sealed class FlightPlansApiFactory : WebApplicationFactory<Program>
+    [Fact]
+    public async Task List_FilterByAreaId_ReturnsOnlyMatchingFlightPlans()
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        // Arrange
+        var areaId1 = await CreateAreaAsync();
+        var areaId2 = await CreateAreaAsync();
+
+        await CreateFlightPlanAsync(areaId1);
+        await CreateFlightPlanAsync(areaId2);
+
+        // Act
+        var response = await Client.GetAsync($"/api/flight-plans?areaId={areaId1}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.NotEmpty(body);
+        Assert.All(body, fp => Assert.Equal(areaId1, fp.AreaId));
+    }
+
+    [Fact]
+    public async Task List_InvalidGuidAreaId_Returns422WithValidationErrorResponse()
+    {
+        // Act
+        var response = await Client.GetAsync("/api/flight-plans?areaId=not-a-guid");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<ValidationErrorResponse>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.NotEmpty(body.Errors);
+        Assert.Contains(body.Errors, e => e.Contains("GUID", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task List_OrderedByCreatedAtDescending()
+    {
+        // Arrange
+        var areaId = await CreateAreaAsync();
+
+        await CreateFlightPlanAsync(areaId);
+        await Task.Delay(50);
+        await CreateFlightPlanAsync(areaId);
+        await Task.Delay(50);
+        await CreateFlightPlanAsync(areaId);
+
+        // Act
+        var response = await Client.GetAsync($"/api/flight-plans?areaId={areaId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.Equal(3, body.Count);
+
+        for (var i = 0; i < body.Count - 1; i++)
         {
-            builder.ConfigureServices(services =>
-            {
-                // Remove existing DbContext registration
-                var descriptorsToRemove = services
-                    .Where(d =>
-                        d.ServiceType == typeof(DbContextOptions<AppDbContext>)
-                        || d.ServiceType == typeof(AppDbContext)
-                        || (d.ServiceType.IsGenericType
-                            && d.ServiceType.GetGenericTypeDefinition() == typeof(DbContextOptions<>))
-                        || d.ServiceType == typeof(DbContextOptions))
-                    .ToList();
-
-                foreach (var d in descriptorsToRemove)
-                {
-                    services.Remove(d);
-                }
-
-                // Remove Npgsql provider services
-                var efInternalDescriptors = services
-                    .Where(d =>
-                        d.ServiceType.FullName?.StartsWith("Microsoft.EntityFrameworkCore") == true
-                        || d.ImplementationType?.FullName?.Contains("Npgsql") == true)
-                    .ToList();
-
-                foreach (var d in efInternalDescriptors)
-                {
-                    services.Remove(d);
-                }
-
-                // Use PostgreSQL with a test-specific database name to avoid conflicts
-                var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-                                       ?? "Host=localhost;Database=dronemesh3d_test;Username=postgres;Password=YourStr0ngP@ssword";
-
-                services.AddDbContext<AppDbContext>(options => { options.UseNpgsql(connectionString, x => x.UseNetTopologySuite()); });
-
-                // Ensure schema is created
-                var sp = services.BuildServiceProvider();
-                using var scope = sp.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                db.Database.EnsureCreated();
-            });
-
-            builder.UseEnvironment("Testing");
+            Assert.True(body[i].CreatedAt >= body[i + 1].CreatedAt,
+                $"Expected descending order: item[{i}].CreatedAt ({body[i].CreatedAt}) should be >= item[{i + 1}].CreatedAt ({body[i + 1].CreatedAt})");
         }
     }
+
+    [Fact]
+    public async Task List_PaginationWithLimitAndOffset_ReturnsCorrectSubset()
+    {
+        // Arrange
+        var areaId = await CreateAreaAsync();
+
+        for (var i = 0; i < 4; i++)
+        {
+            await CreateFlightPlanAsync(areaId);
+            await Task.Delay(50);
+        }
+
+        // Get all first
+        var allResponse = await Client.GetAsync($"/api/flight-plans?areaId={areaId}");
+        allResponse.EnsureSuccessStatusCode();
+        var allPlans = await allResponse.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(allPlans);
+        Assert.Equal(4, allPlans.Count);
+
+        // Act — paginate with limit=2, offset=1
+        var paginatedResponse = await Client.GetAsync($"/api/flight-plans?areaId={areaId}&limit=2&offset=1");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, paginatedResponse.StatusCode);
+
+        var paginatedBody = await paginatedResponse.Content.ReadFromJsonAsync<List<FlightPlanResponse>>(JsonOptions);
+        Assert.NotNull(paginatedBody);
+        Assert.Equal(2, paginatedBody.Count);
+        Assert.Equal(allPlans[1].Id, paginatedBody[0].Id);
+        Assert.Equal(allPlans[2].Id, paginatedBody[1].Id);
+    }
+
+    #endregion
 }

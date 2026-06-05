@@ -12,8 +12,17 @@ public sealed class FlightPlanEntityConfiguration : IEntityTypeConfiguration<Fli
         entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
         entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
         entity.Property(e => e.Mode).HasConversion<string>();
-        entity.Property(e => e.ParametersJson).HasColumnType("jsonb");
-        entity.Property(e => e.WaypointsJson).HasColumnType("jsonb");
+
+        entity.OwnsOne(e => e.GridParameters, b =>
+        {
+            b.ToJson("GridParameters");
+            b.OwnsOne(g => g.Camera);
+        });
+
+        entity.OwnsOne(e => e.PoiParameters, b => { b.ToJson("PoiParameters"); });
+
+        entity.OwnsMany(e => e.Waypoints, b => { b.ToJson("Waypoints"); });
+
         entity.HasOne(e => e.Area)
             .WithMany()
             .HasForeignKey(e => e.AreaId)

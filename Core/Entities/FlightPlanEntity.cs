@@ -7,8 +7,9 @@ public sealed class FlightPlanEntity
     public Guid Id { get; set; }
     public Guid AreaId { get; set; }
     public FlightMode Mode { get; set; }
-    public string ParametersJson { get; set; } = string.Empty;
-    public string WaypointsJson { get; set; } = string.Empty;
+    public GridModeParameters? GridParameters { get; set; }
+    public PoiModeParameters? PoiParameters { get; set; }
+    public List<Waypoint> Waypoints { get; set; } = [];
     public double TotalDistanceM { get; set; }
     public double EstimatedFlightTimeS { get; set; }
     public int PhotoCount { get; set; }

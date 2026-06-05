@@ -1,4 +1,3 @@
-using System.Text.Json;
 using DroneMesh3D.Api.DTOs;
 using DroneMesh3D.Api.Queries;
 using DroneMesh3D.Core.Interfaces;
@@ -7,8 +6,7 @@ using MediatR;
 namespace DroneMesh3D.Api.Handlers;
 
 public sealed class GetFlightPlanQueryHandler(
-    IFlightPlanRepository flightPlanRepository,
-    ILogger<GetFlightPlanQueryHandler> logger)
+    IFlightPlanRepository flightPlanRepository)
     : IRequestHandler<GetFlightPlanQuery, FlightPlanResponse?>
 {
     public async Task<FlightPlanResponse?> Handle(GetFlightPlanQuery query, CancellationToken ct)
@@ -19,16 +17,9 @@ public sealed class GetFlightPlanQueryHandler(
             return null;
         }
 
-        List<WaypointDto> waypoints;
-        try
-        {
-            waypoints = JsonSerializer.Deserialize<List<WaypointDto>>(entity.WaypointsJson) ?? [];
-        }
-        catch (JsonException ex)
-        {
-            logger.LogError(ex, "Failed to deserialize waypoints for flight plan {FlightPlanId}", entity.Id);
-            waypoints = [];
-        }
+        var waypoints = entity.Waypoints
+            .Select(w => new WaypointDto(w.Latitude, w.Longitude, w.AltitudeAglM, w.GimbalPitchDegrees, w.GimbalYawDegrees))
+            .ToList();
 
         return new FlightPlanResponse(
             entity.Id,

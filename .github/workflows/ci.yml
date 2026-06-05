@@ -38,7 +38,7 @@ jobs:
 
       - name: Run CleanupCode
         run: |
-          dotnet jb cleanupcode DroneMesh3D.slnx --profile="Built-in: Full Cleanup" --dotnetcore="$(which dotnet)"
+          dotnet jb cleanupcode DroneMesh3D.slnx --profile="Built-in: Full Cleanup" --dotnetcore="$(which dotnet)" --exclude="**package-lock.json"
           CHANGED=$(git diff --name-only)
           if [ -n "$CHANGED" ]; then
             echo "::error::The following files are not formatted:"

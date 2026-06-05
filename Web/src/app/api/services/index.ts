@@ -4,3 +4,4 @@
  * Run `npm run api:generate` with the backend running to regenerate.
  */
 export { AreasApiService, CreateAreaRequestParams } from './areas.service';
+export { FlightPlansApiService } from './flight-plans.service';

@@ -1,6 +1,7 @@
 using DroneMesh3D.Core.Data;
 using DroneMesh3D.Core.Entities;
 using DroneMesh3D.Core.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace DroneMesh3D.Core.Repositories;
 
@@ -14,4 +15,9 @@ public sealed class AreaRepository(AppDbContext context) : IAreaRepository
 
     public async Task<AreaEntity?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await context.Areas.FindAsync([id], ct);
+
+    public async Task<List<AreaEntity>> GetAllAsync(CancellationToken ct = default)
+        => await context.Areas
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync(ct);
 }

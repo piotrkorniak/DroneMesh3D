@@ -9,4 +9,10 @@ public sealed record PoiModeParameters(
     int? PhotoCount,
     double? OverlapPercent,
     double? CameraHorizontalFovDegrees,
-    double? StructureHeightM);
+    double? StructureHeightM)
+{
+    // Required by EF Core for materialization of owned types
+    private PoiModeParameters() : this(default, default, default, default, default, default, default, default, default)
+    {
+    }
+}

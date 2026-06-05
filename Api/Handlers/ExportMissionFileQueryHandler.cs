@@ -1,7 +1,5 @@
-using System.Text.Json;
 using DroneMesh3D.Api.DTOs;
 using DroneMesh3D.Api.Queries;
-using DroneMesh3D.Core.FlightPath;
 using DroneMesh3D.Core.Interfaces;
 using DroneMesh3D.Core.MissionExport;
 using MediatR;
@@ -29,32 +27,17 @@ public sealed class ExportMissionFileQueryHandler(
             return new ErrorResponse($"Flight plan with ID '{query.FlightPlanId}' was not found.");
         }
 
-        // 2. Deserialize WaypointsJson into List<Waypoint>
-        List<Waypoint> waypoints;
-        try
-        {
-            waypoints = JsonSerializer.Deserialize<List<Waypoint>>(entity.WaypointsJson) ?? [];
-        }
-        catch (JsonException ex)
-        {
-            logger.LogError(
-                ex,
-                "Failed to deserialize waypoints for flight plan {FlightPlanId}. Data may be corrupted",
-                query.FlightPlanId);
-            return new ErrorResponse("Flight plan waypoint data is corrupted and cannot be processed.");
-        }
-
-        // 3. Validate waypoints list is non-empty
-        if (waypoints.Count == 0)
+        // 2. Validate waypoints list is non-empty
+        if (entity.Waypoints.Count == 0)
         {
             return new ValidationErrorResponse(["Flight plan contains no waypoints to export."]);
         }
 
-        // 4. Delegate to the appropriate generator via factory
+        // 3. Delegate to the appropriate generator via factory
         var generator = generatorFactory.GetGenerator(query.Format);
-        var fileData = generator.Generate(query.FlightPlanId, waypoints);
+        var fileData = generator.Generate(query.FlightPlanId, entity.Waypoints);
 
-        // 5. Return MissionFileResult
+        // 4. Return MissionFileResult
         return new MissionFileResult(fileData.Content, fileData.ContentType, fileData.FileName);
     }
 }

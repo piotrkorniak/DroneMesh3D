@@ -6,4 +6,5 @@ public interface IAreaRepository
 {
     Task AddAsync(AreaEntity entity, CancellationToken ct = default);
     Task<AreaEntity?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<List<AreaEntity>> GetAllAsync(CancellationToken ct = default);
 }

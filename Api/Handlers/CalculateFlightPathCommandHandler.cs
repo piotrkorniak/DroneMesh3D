@@ -1,4 +1,3 @@
-using System.Text.Json;
 using DroneMesh3D.Api.Commands;
 using DroneMesh3D.Api.DTOs;
 using DroneMesh3D.Core.Entities;
@@ -37,23 +36,15 @@ public sealed class CalculateFlightPathCommandHandler(
             _ => throw new InvalidOperationException($"Unsupported flight mode: {command.Mode}")
         };
 
-        // 3. Serialize parameters and waypoints to JSON
-        var parametersJson = command.Mode switch
-        {
-            FlightMode.Grid => JsonSerializer.Serialize(command.Grid),
-            FlightMode.Poi => JsonSerializer.Serialize(command.Poi),
-            _ => string.Empty
-        };
-        var waypointsJson = JsonSerializer.Serialize(result.Waypoints);
-
-        // 4. Create FlightPlanEntity
+        // 3. Create FlightPlanEntity
         var entity = new FlightPlanEntity
         {
             Id = Guid.CreateVersion7(),
             AreaId = command.AreaId,
             Mode = command.Mode,
-            ParametersJson = parametersJson,
-            WaypointsJson = waypointsJson,
+            GridParameters = command.Mode == FlightMode.Grid ? command.Grid : null,
+            PoiParameters = command.Mode == FlightMode.Poi ? command.Poi : null,
+            Waypoints = result.Waypoints.ToList(),
             TotalDistanceM = result.Statistics.TotalDistanceM,
             EstimatedFlightTimeS = result.Statistics.EstimatedFlightTimeS,
             PhotoCount = result.Statistics.PhotoCount,
@@ -61,7 +52,7 @@ public sealed class CalculateFlightPathCommandHandler(
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        // 5. Persist to database
+        // 4. Persist to database
         try
         {
             await flightPlanRepository.AddAsync(entity, ct);
@@ -72,7 +63,7 @@ public sealed class CalculateFlightPathCommandHandler(
             return new ErrorResponse("Failed to save flight plan to the database.");
         }
 
-        // 6. Map to response
+        // 5. Map to response
         var waypoints = result.Waypoints.Select(w => new WaypointDto(
             w.Latitude,
             w.Longitude,

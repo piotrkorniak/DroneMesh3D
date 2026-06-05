@@ -1,4 +1,3 @@
-using System.Text.Json;
 using DroneMesh3D.Api.Handlers;
 using DroneMesh3D.Api.Queries;
 using DroneMesh3D.Core.Entities;
@@ -43,31 +42,6 @@ public sealed class ExportMissionFileQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_CorruptedWaypointsJson_ReturnsErrorResponse()
-    {
-        // Arrange
-        var flightPlanId = Guid.NewGuid();
-        var query = new ExportMissionFileQuery(flightPlanId, ExportFormat.Kml);
-
-        var entity = new FlightPlanEntity
-        {
-            Id = flightPlanId,
-            WaypointsJson = "{ this is not valid json !!!"
-        };
-
-        _repository.GetByIdAsync(flightPlanId, Arg.Any<CancellationToken>())
-            .Returns(entity);
-
-        // Act
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsT2); // ErrorResponse (500 case)
-        var errorResponse = result.AsT2;
-        Assert.Contains("corrupted", errorResponse.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
     public async Task Handle_EmptyWaypointsList_ReturnsValidationErrorResponse()
     {
         // Arrange
@@ -77,7 +51,7 @@ public sealed class ExportMissionFileQueryHandlerTests
         var entity = new FlightPlanEntity
         {
             Id = flightPlanId,
-            WaypointsJson = "[]"
+            Waypoints = []
         };
 
         _repository.GetByIdAsync(flightPlanId, Arg.Any<CancellationToken>())
@@ -109,7 +83,7 @@ public sealed class ExportMissionFileQueryHandlerTests
         var entity = new FlightPlanEntity
         {
             Id = flightPlanId,
-            WaypointsJson = JsonSerializer.Serialize(waypoints)
+            Waypoints = waypoints
         };
 
         var expectedFileData = new MissionFileData(

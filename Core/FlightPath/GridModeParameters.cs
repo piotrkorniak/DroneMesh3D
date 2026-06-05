@@ -5,4 +5,10 @@ public sealed record GridModeParameters(
     CameraParameters Camera,
     double FrontOverlapPercent,
     double SideOverlapPercent,
-    double? HeadingDegrees);
+    double? HeadingDegrees)
+{
+    // Required by EF Core for materialization of owned types
+    private GridModeParameters() : this(default, null!, default, default, default)
+    {
+    }
+}

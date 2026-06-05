@@ -1,24 +1,20 @@
-using System.Text.Json;
-using DroneMesh3D.Api.DTOs;
 using DroneMesh3D.Api.Handlers;
 using DroneMesh3D.Api.Queries;
 using DroneMesh3D.Core.Entities;
 using DroneMesh3D.Core.FlightPath;
 using DroneMesh3D.Core.Interfaces;
-using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace DroneMesh3D.Api.Tests.Handlers;
 
 public sealed class ListFlightPlansQueryHandlerTests
 {
-    private readonly ILogger<ListFlightPlansQueryHandler> _logger = Substitute.For<ILogger<ListFlightPlansQueryHandler>>();
     private readonly IFlightPlanRepository _repository = Substitute.For<IFlightPlanRepository>();
     private readonly ListFlightPlansQueryHandler _sut;
 
     public ListFlightPlansQueryHandlerTests()
     {
-        _sut = new ListFlightPlansQueryHandler(_repository, _logger);
+        _sut = new ListFlightPlansQueryHandler(_repository);
     }
 
     [Fact]
@@ -44,7 +40,7 @@ public sealed class ListFlightPlansQueryHandlerTests
         var flightPlanId = Guid.NewGuid();
         var createdAt = DateTimeOffset.UtcNow;
 
-        var waypoints = new List<WaypointDto>
+        var waypoints = new List<Waypoint>
         {
             new(52.0, 21.0, 50.0, -45.0, 0.0),
             new(52.001, 21.001, 50.0, -45.0, 90.0)
@@ -55,7 +51,7 @@ public sealed class ListFlightPlansQueryHandlerTests
             Id = flightPlanId,
             AreaId = areaId,
             Mode = FlightMode.Grid,
-            WaypointsJson = JsonSerializer.Serialize(waypoints),
+            Waypoints = waypoints,
             TotalDistanceM = 150.5,
             EstimatedFlightTimeS = 60.0,
             PhotoCount = 10,
@@ -98,34 +94,5 @@ public sealed class ListFlightPlansQueryHandlerTests
 
         // Assert
         await _repository.Received(1).ListAsync(areaId, 25, 5, Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task Handle_HandlesInvalidWaypointsJson_ReturnsEmptyWaypoints()
-    {
-        // Arrange
-        var entity = new FlightPlanEntity
-        {
-            Id = Guid.NewGuid(),
-            AreaId = Guid.NewGuid(),
-            Mode = FlightMode.Poi,
-            WaypointsJson = "not valid json",
-            TotalDistanceM = 100.0,
-            EstimatedFlightTimeS = 30.0,
-            PhotoCount = 5,
-            CoveredAreaM2 = 2000.0,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var query = new ListFlightPlansQuery(null);
-        _repository.ListAsync(null, 100, 0, Arg.Any<CancellationToken>())
-            .Returns([entity]);
-
-        // Act
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        // Assert
-        Assert.Single(result);
-        Assert.Empty(result[0].Waypoints);
     }
 }

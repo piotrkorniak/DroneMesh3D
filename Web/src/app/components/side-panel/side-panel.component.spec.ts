@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { SidePanelComponent } from './side-panel.component';
 import { PanelStateService } from '../../services/panel-state.service';
+import { AreasApiService } from '../../api/services/areas.service';
+import { FlightPlansApiService } from '../../api/services/flight-plans.service';
 
 describe('SidePanelComponent', () => {
   let component: SidePanelComponent;
@@ -8,8 +11,17 @@ describe('SidePanelComponent', () => {
   let panelState: PanelStateService;
 
   beforeEach(async () => {
+    const areasApiSpy = jasmine.createSpyObj('AreasApiService', ['listAreas']);
+    areasApiSpy.listAreas.and.returnValue(of([]));
+    const flightPlansApiSpy = jasmine.createSpyObj('FlightPlansApiService', ['calculate', 'listByArea', 'exportMissionFile']);
+    flightPlansApiSpy.listByArea.and.returnValue(of([]));
+
     await TestBed.configureTestingModule({
       imports: [SidePanelComponent],
+      providers: [
+        { provide: AreasApiService, useValue: areasApiSpy },
+        { provide: FlightPlansApiService, useValue: flightPlansApiSpy },
+      ],
     }).compileComponents();
 
     panelState = TestBed.inject(PanelStateService);

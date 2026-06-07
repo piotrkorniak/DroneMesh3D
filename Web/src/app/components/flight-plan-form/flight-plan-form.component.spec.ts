@@ -49,14 +49,14 @@ describe('FlightPlanFormComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  // --- Test 1: Default mode is Grid with 8 fields visible ---
-  it('should default to Grid mode with 8 fields visible', () => {
+  // --- Test 1: Default mode is Grid with 9 fields visible (8 params + camera preset) ---
+  it('should default to Grid mode with 9 fields visible', () => {
     selectionState.selectedAreaId.set('area-1');
     fixture.detectChanges();
 
     expect(component.mode()).toBe('Grid');
     const fields = fixture.nativeElement.querySelectorAll('.fpf__field');
-    expect(fields.length).toBe(8);
+    expect(fields.length).toBe(9);
   });
 
   // --- Test 2: Switching to Poi mode shows 9 fields ---

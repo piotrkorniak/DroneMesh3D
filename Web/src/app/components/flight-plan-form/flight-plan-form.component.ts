@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -135,6 +136,22 @@ export class FlightPlanFormComponent {
 
   /** Track which fields have been touched (for showing errors on blur) */
   private readonly touchedFields = signal<Set<string>>(new Set());
+
+  constructor() {
+    // Programmatically enable/disable forms based on area selection
+    // This avoids mixing [disabled] attribute with reactive form directives
+    effect(() => {
+      const enabled = this.hasSelectedArea();
+      const opts = { emitEvent: false };
+      if (enabled) {
+        this.gridForm.enable(opts);
+        this.poiForm.enable(opts);
+      } else {
+        this.gridForm.disable(opts);
+        this.poiForm.disable(opts);
+      }
+    });
+  }
 
   /** Check if a field is a camera field */
   isCameraField(fieldId: string): boolean {

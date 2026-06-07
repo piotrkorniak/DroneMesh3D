@@ -99,7 +99,6 @@
               [attr.aria-valuemin]="field.min"
               [attr.aria-valuemax]="field.max"
               [attr.aria-valuenow]="activeForm().get(field.id)?.value"
-              [disabled]="!hasSelectedArea()"
             />
             <span class="fpf__slider-value">{{ activeForm().get(field.id)?.value ?? '–' }}</span>
           </div>
@@ -137,7 +136,6 @@
             [attr.aria-describedby]="getAriaDescribedBy(field.id)"
             [attr.aria-invalid]="isFieldInvalid(field.id)"
             [attr.aria-required]="field.required"
-            [disabled]="!hasSelectedArea()"
             [readonly]="mode() === 'Grid' && isCameraField(field.id) && cameraFieldsReadonly()"
             (blur)="markFieldTouched(field.id)"
           />

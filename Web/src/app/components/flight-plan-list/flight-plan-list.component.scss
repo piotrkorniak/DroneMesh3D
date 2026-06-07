@@ -69,6 +69,7 @@
   font-family: var(--ds-font-family);
   font-size: var(--ds-font-size-sm);
   color: var(--ds-color-text-primary);
+  position: relative;
 }
 
 .flight-plan-list__item:hover {
@@ -143,6 +144,87 @@
 }
 
 .flight-plan-list__export-btn:focus-visible {
+  outline: 2px solid var(--ds-color-primary);
+  outline-offset: 2px;
+}
+
+.flight-plan-list__delete-btn {
+  position: absolute;
+  top: var(--ds-spacing-sm);
+  right: var(--ds-spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--ds-transition-fast), visibility var(--ds-transition-fast), background var(--ds-transition-fast), color var(--ds-transition-fast);
+}
+
+.flight-plan-list__item:hover .flight-plan-list__delete-btn,
+.flight-plan-list__item:focus-within .flight-plan-list__delete-btn,
+.flight-plan-list__delete-btn:focus {
+  opacity: 1;
+  visibility: visible;
+}
+
+.flight-plan-list__delete-btn:hover {
+  background: var(--ds-color-error-bg, rgba(239, 68, 68, 0.1));
+  color: var(--ds-color-error);
+}
+
+.flight-plan-list__delete-btn:focus-visible {
+  opacity: 1;
+  visibility: visible;
+  outline: 2px solid var(--ds-color-primary);
+  outline-offset: 2px;
+}
+
+.flight-plan-list__delete-error {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-spacing-sm);
+  padding: var(--ds-spacing-xs) var(--ds-spacing-md);
+  margin-bottom: var(--ds-spacing-xs);
+  background: var(--ds-color-error-bg, rgba(239, 68, 68, 0.1));
+  border-radius: var(--ds-radius-sm);
+}
+
+.flight-plan-list__delete-error-message {
+  margin: 0;
+  flex: 1;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-error);
+}
+
+.flight-plan-list__delete-error-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-color-error);
+  cursor: pointer;
+  font-size: var(--ds-font-size-xs);
+}
+
+.flight-plan-list__delete-error-dismiss:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.flight-plan-list__delete-error-dismiss:focus-visible {
   outline: 2px solid var(--ds-color-primary);
   outline-offset: 2px;
 }

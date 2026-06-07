@@ -1,24 +1,22 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import Feature from 'ol/Feature';
-import Polygon from 'ol/geom/Polygon';
-import { fromLonLat } from 'ol/proj';
 
 import { MapComponent } from './map.component';
+import { MapDrawingService } from '../../services/map-drawing.service';
 import { AreaResponse } from '../../api/models/area-response';
 
 /**
- * Integration test: Full flow simulation
- * Draw polygon → validate → submit → HTTP 201 → verify signal state transitions
+ * Integration test: Full flow simulation via MapDrawingService
+ * Service.startDrawing() → map adds Draw interaction → draw end → service.setPolygonCoordinates() → service.submitArea() → HTTP 201
  *
- * This test serves as the closest automated equivalent to an e2e test
- * for the map area definition flow, without requiring a browser automation tool.
+ * This test verifies the MapComponent correctly integrates with MapDrawingService.
  */
-describe('MapComponent Integration (end-to-end flow)', () => {
+describe('MapComponent Integration (end-to-end flow via MapDrawingService)', () => {
   let component: MapComponent;
   let fixture: ComponentFixture<MapComponent>;
   let httpTesting: HttpTestingController;
+  let mapDrawingService: MapDrawingService;
 
   // Valid polygon coordinates in EPSG:4326 (lon, lat) — a small square in Warsaw
   const validCoords4326: number[][] = [
@@ -29,8 +27,8 @@ describe('MapComponent Integration (end-to-end flow)', () => {
     [21.0122, 52.2297], // closed ring
   ];
 
-  // Same coordinates transformed to EPSG:3857 (Web Mercator) for OpenLayers
-  const validCoords3857: number[][] = validCoords4326.map(coord => fromLonLat(coord));
+  // Same coordinates in EPSG:3857 (Web Mercator) are used internally by OpenLayers
+  // when the map renders the polygon from the EPSG:4326 input.
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -44,6 +42,7 @@ describe('MapComponent Integration (end-to-end flow)', () => {
     fixture = TestBed.createComponent(MapComponent);
     component = fixture.componentInstance;
     httpTesting = TestBed.inject(HttpTestingController);
+    mapDrawingService = TestBed.inject(MapDrawingService);
 
     // Initialize the map (ngOnInit)
     fixture.detectChanges();
@@ -53,36 +52,34 @@ describe('MapComponent Integration (end-to-end flow)', () => {
     httpTesting.verify();
   });
 
-  it('should complete the full flow: add polygon → validate → submit → 201 Created', () => {
-    // --- Step 1: Simulate drawing a polygon by adding a feature to vectorSource ---
-    const polygon = new Polygon([validCoords3857]);
-    const feature = new Feature({ geometry: polygon });
-    component.vectorSource.addFeature(feature);
-    component.hasPolygon.set(true);
+  it('should complete the full flow: startDrawing → setPolygonCoordinates → submitArea → 201 Created', () => {
+    // --- Step 1: Start drawing via service ---
+    mapDrawingService.startDrawing();
+    TestBed.flushEffects();
 
-    // --- Step 2: Trigger validation (simulating what happens after drawend) ---
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private injected service for test
-    const polygonValidator = (component as any).polygonValidator;
-    const validationResult = polygonValidator.validate(validCoords4326);
-    component.validationResult.set(validationResult);
+    // Verify Draw interaction was added
+    const interactions = component.getMap().getInteractions().getArray();
+    const drawInteraction = interactions.find(i => i.constructor.name === 'Draw');
+    expect(drawInteraction).toBeTruthy();
 
-    // Verify that validation passes for this polygon
-    expect(component.isValid()).toBeTrue();
-    expect(component.validationErrors()).toEqual([]);
-    expect(component.hasPolygon()).toBeTrue();
+    // --- Step 2: Simulate draw end by setting polygon coordinates via service ---
+    mapDrawingService.setPolygonCoordinates(validCoords4326);
+    TestBed.flushEffects();
 
-    // --- Step 3: Verify pre-submission state ---
-    expect(component.isSubmitting()).toBeFalse();
-    expect(component.submissionError()).toBeNull();
+    // Verify service state
+    expect(mapDrawingService.hasPolygon()).toBeTrue();
+    expect(mapDrawingService.isDrawing()).toBeFalse();
+    expect(mapDrawingService.isValid()).toBeTrue();
+    expect(mapDrawingService.validationErrors()).toEqual([]);
 
-    // --- Step 4: Call submitArea() ---
-    component.submitArea();
+    // --- Step 3: Submit area via service ---
+    expect(mapDrawingService.isSubmitting()).toBeFalse();
+    mapDrawingService.submitArea().subscribe();
 
-    // --- Step 5: Verify isSubmitting is true while request is in flight ---
-    expect(component.isSubmitting()).toBeTrue();
-    expect(component.submissionError()).toBeNull();
+    // --- Step 4: Verify isSubmitting is true while request is in flight ---
+    expect(mapDrawingService.isSubmitting()).toBeTrue();
 
-    // --- Step 6: Mock the HTTP response (201 Created with AreaResponse) ---
+    // --- Step 5: Mock the HTTP response (201 Created with AreaResponse) ---
     const mockResponse: AreaResponse = {
       id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
       createdAt: '2026-06-04T10:30:00Z',
@@ -104,26 +101,21 @@ describe('MapComponent Integration (end-to-end flow)', () => {
 
     req.flush(mockResponse, { status: 201, statusText: 'Created' });
 
-    // --- Step 7: Verify post-submission state ---
-    expect(component.isSubmitting()).toBeFalse();
-    expect(component.submissionError()).toBeNull();
+    // --- Step 6: Verify post-submission state ---
+    expect(mapDrawingService.isSubmitting()).toBeFalse();
+    expect(mapDrawingService.hasPolygon()).toBeFalse();
   });
 
-  it('should handle submission error and set submissionError signal', () => {
-    // Add polygon and validate
-    const polygon = new Polygon([validCoords3857]);
-    const feature = new Feature({ geometry: polygon });
-    component.vectorSource.addFeature(feature);
-    component.hasPolygon.set(true);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private injected service for test
-    const polygonValidator = (component as any).polygonValidator;
-    const validationResult = polygonValidator.validate(validCoords4326);
-    component.validationResult.set(validationResult);
+  it('should handle submission error gracefully', () => {
+    // Set polygon coordinates
+    mapDrawingService.setPolygonCoordinates(validCoords4326);
+    TestBed.flushEffects();
 
     // Submit
-    component.submitArea();
-    expect(component.isSubmitting()).toBeTrue();
+    mapDrawingService.submitArea().subscribe({
+      error: () => { /* expected */ },
+    });
+    expect(mapDrawingService.isSubmitting()).toBeTrue();
 
     // Mock a 422 error response
     const errorResponse = {
@@ -135,74 +127,61 @@ describe('MapComponent Integration (end-to-end flow)', () => {
     req.flush(errorResponse, { status: 422, statusText: 'Unprocessable Entity' });
 
     // Verify error state
-    expect(component.isSubmitting()).toBeFalse();
-    expect(component.submissionError()).toBe('Validation failed.');
+    expect(mapDrawingService.isSubmitting()).toBeFalse();
+    // hasPolygon should remain true (polygon preserved on error)
+    expect(mapDrawingService.hasPolygon()).toBeTrue();
   });
 
-  it('should not submit when vectorSource has no features', () => {
-    // Ensure vectorSource is empty
-    expect(component.vectorSource.getFeatures().length).toBe(0);
+  it('should add Modify interaction after polygon coordinates are set', () => {
+    mapDrawingService.setPolygonCoordinates(validCoords4326);
+    TestBed.flushEffects();
 
-    // Attempt to submit — should return early without making any HTTP call
-    component.submitArea();
-
-    expect(component.isSubmitting()).toBeFalse();
-    httpTesting.expectNone('/api/areas');
+    const map = component.getMap();
+    const modifyInteractions = map.getInteractions().getArray().filter(
+      i => i.constructor.name === 'Modify'
+    );
+    expect(modifyInteractions.length).toBe(1);
   });
 
-  it('should transform coordinates from EPSG:3857 to EPSG:4326 in the request body', () => {
-    // Add a polygon in EPSG:3857 (Web Mercator) as OpenLayers would
-    const polygon = new Polygon([validCoords3857]);
-    const feature = new Feature({ geometry: polygon });
-    component.vectorSource.addFeature(feature);
-    component.hasPolygon.set(true);
-    component.validationResult.set({ isValid: true, errors: [] });
+  it('should add Draw interaction when service starts drawing', () => {
+    mapDrawingService.startDrawing();
+    TestBed.flushEffects();
 
-    component.submitArea();
+    const map = component.getMap();
+    const drawInteractions = map.getInteractions().getArray().filter(
+      i => i.constructor.name === 'Draw'
+    );
+    expect(drawInteractions.length).toBe(1);
+  });
 
-    const req = httpTesting.expectOne('/api/areas');
-    const submittedCoords = req.request.body.coordinates[0];
+  it('should remove Draw interaction when drawing is cancelled via service', () => {
+    mapDrawingService.startDrawing();
+    TestBed.flushEffects();
 
-    // Verify coordinates are in EPSG:4326 range (not EPSG:3857 which would be millions)
-    for (const coord of submittedCoords) {
-      // Longitude should be in [-180, 180] range
-      expect(coord[0]).toBeGreaterThan(-180);
-      expect(coord[0]).toBeLessThan(180);
-      // Latitude should be in [-90, 90] range
-      expect(coord[1]).toBeGreaterThan(-90);
-      expect(coord[1]).toBeLessThan(90);
-    }
+    mapDrawingService.cancelDrawing();
+    TestBed.flushEffects();
 
-    // Verify first coordinate is approximately what we expect (21.0122, 52.2297)
-    expect(submittedCoords[0][0]).toBeCloseTo(21.0122, 3);
-    expect(submittedCoords[0][1]).toBeCloseTo(52.2297, 3);
-
-    // Flush to avoid afterEach verify failure
-    req.flush({
-      id: 'test-id',
-      createdAt: '2026-01-01T00:00:00Z',
-      geometry: { type: 'Polygon', coordinates: [validCoords4326] },
-    }, { status: 201, statusText: 'Created' });
+    const map = component.getMap();
+    const drawInteractions = map.getInteractions().getArray().filter(
+      i => i.constructor.name === 'Draw'
+    );
+    expect(drawInteractions.length).toBe(0);
   });
 
   it('should reset isSubmitting to false even on network error', () => {
-    // Add polygon
-    const polygon = new Polygon([validCoords3857]);
-    const feature = new Feature({ geometry: polygon });
-    component.vectorSource.addFeature(feature);
-    component.hasPolygon.set(true);
-    component.validationResult.set({ isValid: true, errors: [] });
+    mapDrawingService.setPolygonCoordinates(validCoords4326);
+    TestBed.flushEffects();
 
-    component.submitArea();
-    expect(component.isSubmitting()).toBeTrue();
+    mapDrawingService.submitArea().subscribe({
+      error: () => { /* expected */ },
+    });
+    expect(mapDrawingService.isSubmitting()).toBeTrue();
 
     // Simulate a network error
     const req = httpTesting.expectOne('/api/areas');
     req.error(new ProgressEvent('error'), { status: 0, statusText: 'Network Error' });
 
     // isSubmitting should be reset to false via finalize()
-    expect(component.isSubmitting()).toBeFalse();
-    // submissionError should have a message
-    expect(component.submissionError()).toBeTruthy();
+    expect(mapDrawingService.isSubmitting()).toBeFalse();
   });
 });

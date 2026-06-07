@@ -1,0 +1,42 @@
+<div
+  class="confirmation-dialog__backdrop"
+  aria-hidden="true"
+></div>
+<div
+  class="confirmation-dialog"
+  role="alertdialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="'confirmation-dialog-title'"
+  [attr.aria-describedby]="'confirmation-dialog-description'"
+  (keydown)="onKeydown($event)"
+  #dialogEl
+>
+  <div class="confirmation-dialog__header">
+    <h2 id="confirmation-dialog-title" class="confirmation-dialog__title">{{ title() }}</h2>
+  </div>
+
+  <div class="confirmation-dialog__body">
+    <p id="confirmation-dialog-description" class="confirmation-dialog__message">{{ message() }}</p>
+  </div>
+
+  <div class="confirmation-dialog__footer">
+    <button
+      class="confirmation-dialog__cancel-btn"
+      [disabled]="loading()"
+      (click)="onCancel()"
+      #cancelBtn
+    >
+      {{ cancelLabel() }}
+    </button>
+    <button
+      class="confirmation-dialog__confirm-btn"
+      [disabled]="loading()"
+      (click)="onConfirm()"
+    >
+      @if (loading()) {
+        <span class="confirmation-dialog__spinner" aria-hidden="true"></span>
+      }
+      {{ confirmLabel() }}
+    </button>
+  </div>
+</div>

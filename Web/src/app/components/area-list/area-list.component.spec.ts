@@ -2,13 +2,18 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { AreaListComponent } from './area-list.component';
 import { AreasApiService } from '../../api/services/areas.service';
+import { FlightPlansApiService } from '../../api/services/flight-plans.service';
 import { SelectionStateService } from '../../services/selection-state.service';
+import { LiveAnnouncerService } from '../../services/live-announcer.service';
 import { AreaResponse } from '../../api/models/area-response';
+import { FlightPlanResponse } from '../../api/models/flight-plan-response';
 
 describe('AreaListComponent', () => {
   let component: AreaListComponent;
   let fixture: ComponentFixture<AreaListComponent>;
   let areasApiSpy: jasmine.SpyObj<AreasApiService>;
+  let flightPlansApiSpy: jasmine.SpyObj<FlightPlansApiService>;
+  let liveAnnouncerSpy: jasmine.SpyObj<LiveAnnouncerService>;
   let selectionState: SelectionStateService;
 
   const mockAreas: AreaResponse[] = [
@@ -39,13 +44,18 @@ describe('AreaListComponent', () => {
   ];
 
   beforeEach(async () => {
-    areasApiSpy = jasmine.createSpyObj('AreasApiService', ['listAreas']);
+    areasApiSpy = jasmine.createSpyObj('AreasApiService', ['listAreas', 'deleteArea']);
+    flightPlansApiSpy = jasmine.createSpyObj('FlightPlansApiService', ['list']);
+    liveAnnouncerSpy = jasmine.createSpyObj('LiveAnnouncerService', ['announce']);
     areasApiSpy.listAreas.and.returnValue(of(mockAreas));
+    flightPlansApiSpy.list.and.returnValue(of([]));
 
     await TestBed.configureTestingModule({
       imports: [AreaListComponent],
       providers: [
         { provide: AreasApiService, useValue: areasApiSpy },
+        { provide: FlightPlansApiService, useValue: flightPlansApiSpy },
+        { provide: LiveAnnouncerService, useValue: liveAnnouncerSpy },
       ],
     }).compileComponents();
 
@@ -251,6 +261,160 @@ describe('AreaListComponent', () => {
       const activeDescendant = container.getAttribute('aria-activedescendant');
       // First sorted area is area-2
       expect(activeDescendant).toBe('area-item-area-2');
+    });
+  });
+
+  describe('area deletion', () => {
+    beforeEach(() => {
+      fixture.detectChanges();
+    });
+
+    it('should render delete button in DOM for each area item', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.area-list__delete-btn');
+      expect(deleteButtons.length).toBe(3);
+    });
+
+    it('should have tabindex="0" on delete buttons for keyboard accessibility', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.area-list__delete-btn');
+      deleteButtons.forEach((btn: HTMLElement) => {
+        expect(btn.getAttribute('tabindex')).toBe('0');
+      });
+    });
+
+    it('should have aria-label on delete buttons', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.area-list__delete-btn');
+      deleteButtons.forEach((btn: HTMLElement) => {
+        expect(btn.getAttribute('aria-label')).toBe('Usuń obszar');
+      });
+    });
+
+    it('should fetch plan count and open dialog on delete click', () => {
+      flightPlansApiSpy.list.and.returnValue(of([{ id: 'plan-1' } as unknown as FlightPlanResponse, { id: 'plan-2' } as unknown as FlightPlanResponse]));
+
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      expect(flightPlansApiSpy.list).toHaveBeenCalled();
+      expect(component.deleteDialogOpen()).toBeTrue();
+      expect(component.deletePlanCount()).toBe(2);
+    });
+
+    it('should show cascade warning in dialog message when plans exist', () => {
+      flightPlansApiSpy.list.and.returnValue(of([{ id: 'plan-1' } as unknown as FlightPlanResponse]));
+
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      expect(component.deleteDialogMessage()).toContain('1');
+      expect(component.deleteDialogMessage()).toContain('powiązane plany lotu');
+    });
+
+    it('should show simple message when no plans exist', () => {
+      flightPlansApiSpy.list.and.returnValue(of([]));
+
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      expect(component.deleteDialogMessage()).toBe('Czy na pewno chcesz usunąć ten obszar?');
+    });
+
+    it('should remove area from list on successful deletion', () => {
+      areasApiSpy.deleteArea.and.returnValue(of(void 0));
+      flightPlansApiSpy.list.and.returnValue(of([]));
+
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirmed();
+      fixture.detectChanges();
+
+      expect(component.areas().length).toBe(2);
+      expect(component.deleteDialogOpen()).toBeFalse();
+    });
+
+    it('should clear selection when deleted area was selected', () => {
+      // Select the first area (area-2 after sorting)
+      const items = fixture.nativeElement.querySelectorAll('.area-list__item');
+      items[0].click();
+      fixture.detectChanges();
+      expect(selectionState.selectedAreaId()).toBe('area-2');
+
+      areasApiSpy.deleteArea.and.returnValue(of(void 0));
+      flightPlansApiSpy.list.and.returnValue(of([]));
+
+      // Delete the selected area (first item = area-2)
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirmed();
+      fixture.detectChanges();
+
+      expect(selectionState.selectedAreaId()).toBeNull();
+      expect(selectionState.plans()).toEqual([]);
+    });
+
+    it('should announce deletion via aria-live', () => {
+      areasApiSpy.deleteArea.and.returnValue(of(void 0));
+      flightPlansApiSpy.list.and.returnValue(of([]));
+
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirmed();
+      fixture.detectChanges();
+
+      expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith(
+        jasmine.stringContaining('Obszar usunięty')
+      );
+    });
+
+    it('should show inline error on deletion failure', () => {
+      areasApiSpy.deleteArea.and.returnValue(throwError(() => new Error('Server error')));
+      flightPlansApiSpy.list.and.returnValue(of([]));
+
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirmed();
+      fixture.detectChanges();
+
+      expect(component.deleteError()).toBe('Server error');
+      expect(component.deleteDialogOpen()).toBeFalse();
+      // Area should still be in the list
+      expect(component.areas().length).toBe(3);
+    });
+
+    it('should close dialog on cancel', () => {
+      flightPlansApiSpy.list.and.returnValue(of([]));
+
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      expect(component.deleteDialogOpen()).toBeTrue();
+
+      component.onDeleteCancelled();
+      fixture.detectChanges();
+
+      expect(component.deleteDialogOpen()).toBeFalse();
+    });
+
+    it('should not propagate click to select area when delete button is clicked', () => {
+      flightPlansApiSpy.list.and.returnValue(of([]));
+
+      const deleteBtn = fixture.nativeElement.querySelector('.area-list__delete-btn');
+      deleteBtn.click();
+      fixture.detectChanges();
+
+      // Selection should not have changed
+      expect(selectionState.selectedAreaId()).toBeNull();
     });
   });
 });

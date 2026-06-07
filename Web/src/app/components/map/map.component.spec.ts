@@ -1,11 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { MapComponent } from './map.component';
+import { MapDrawingService } from '../../services/map-drawing.service';
 import { ValidationRule } from '../../models/validation';
 import { Style } from 'ol/style';
 
 describe('MapComponent', () => {
   let component: MapComponent;
   let fixture: ComponentFixture<MapComponent>;
+  let mapDrawingService: MapDrawingService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -14,42 +17,11 @@ describe('MapComponent', () => {
 
     fixture = TestBed.createComponent(MapComponent);
     component = fixture.componentInstance;
+    mapDrawingService = TestBed.inject(MapDrawingService);
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
-  });
-
-  it('should have initial signal values', () => {
-    expect(component.validationResult()).toBeNull();
-    expect(component.isSubmitting()).toBeFalse();
-    expect(component.submissionError()).toBeNull();
-    expect(component.hasPolygon()).toBeFalse();
-    expect(component.isDrawing()).toBeFalse();
-  });
-
-  it('should compute isValid as false when validationResult is null', () => {
-    expect(component.isValid()).toBeFalse();
-  });
-
-  it('should compute isValid as true when validationResult.isValid is true', () => {
-    component.validationResult.set({ isValid: true, errors: [] });
-    expect(component.isValid()).toBeTrue();
-  });
-
-  it('should compute validationErrors as empty array when no result', () => {
-    expect(component.validationErrors()).toEqual([]);
-  });
-
-  it('should compute validationErrors from validationResult errors', () => {
-    component.validationResult.set({
-      isValid: false,
-      errors: [
-        { rule: ValidationRule.MinVertices, message: 'Too few vertices' },
-        { rule: ValidationRule.Closure, message: 'Not closed' },
-      ],
-    });
-    expect(component.validationErrors()).toEqual(['Too few vertices', 'Not closed']);
   });
 
   it('should initialize the map on ngOnInit', () => {
@@ -64,18 +36,15 @@ describe('MapComponent', () => {
     expect(component.vectorLayer.getSource()).toBe(component.vectorSource);
   });
 
-  describe('startDrawing', () => {
+  describe('drawingEffect (MapDrawingService.isDrawing)', () => {
     beforeEach(() => {
       fixture.detectChanges(); // initialize map
     });
 
-    it('should set isDrawing to true', () => {
-      component.startDrawing();
-      expect(component.isDrawing()).toBeTrue();
-    });
+    it('should add a Draw interaction when MapDrawingService.isDrawing becomes true', () => {
+      mapDrawingService.startDrawing();
+      TestBed.flushEffects();
 
-    it('should add a Draw interaction to the map', () => {
-      component.startDrawing();
       const interactions = component.getMap().getInteractions().getArray();
       const drawInteraction = interactions.find(
         (i) => i.constructor.name === 'Draw'
@@ -83,108 +52,63 @@ describe('MapComponent', () => {
       expect(drawInteraction).toBeTruthy();
     });
 
-    it('should clear existing features before starting new drawing', () => {
-      component.vectorSource.clear(); // ensure clean state
-      component.startDrawing();
-      // After calling startDrawing, vectorSource should be empty (no previously drawn features)
-      expect(component.vectorSource.getFeatures().length).toBe(0);
-    });
+    it('should remove Draw interaction when MapDrawingService.isDrawing becomes false', () => {
+      mapDrawingService.startDrawing();
+      TestBed.flushEffects();
 
-    it('should remove previous draw interaction when starting a new one', () => {
-      component.startDrawing();
-      const map = component.getMap();
-      const interactionsBefore = map.getInteractions().getArray().length;
-
-      component.startDrawing(); // start a new one
-      const interactionsAfter = map.getInteractions().getArray().length;
-
-      // Should not accumulate interactions
-      expect(interactionsAfter).toBe(interactionsBefore);
-    });
-  });
-
-  describe('clearPolygon', () => {
-    beforeEach(() => {
-      fixture.detectChanges(); // initialize map
-    });
-
-    it('should clear the vectorSource', () => {
-      component.startDrawing();
-      component.clearPolygon();
-      expect(component.vectorSource.getFeatures().length).toBe(0);
-    });
-
-    it('should reset hasPolygon to false', () => {
-      component.hasPolygon.set(true);
-      component.clearPolygon();
-      expect(component.hasPolygon()).toBeFalse();
-    });
-
-    it('should reset validationResult to null', () => {
-      component.validationResult.set({ isValid: true, errors: [] });
-      component.clearPolygon();
-      expect(component.validationResult()).toBeNull();
-    });
-
-    it('should reset isDrawing to false', () => {
-      component.startDrawing();
-      expect(component.isDrawing()).toBeTrue();
-      component.clearPolygon();
-      expect(component.isDrawing()).toBeFalse();
-    });
-
-    it('should reset submissionError to null', () => {
-      component.submissionError.set('Some error');
-      component.clearPolygon();
-      expect(component.submissionError()).toBeNull();
-    });
-
-    it('should remove draw interaction from the map', () => {
-      component.startDrawing();
-      component.clearPolygon();
+      mapDrawingService.cancelDrawing();
+      TestBed.flushEffects();
 
       const map = component.getMap();
       const interactions = map.getInteractions().getArray();
-      // No Draw interactions should remain (only default interactions like DoubleClickZoom, etc.)
       const drawInteractions = interactions.filter(
         (i) => i.constructor.name === 'Draw'
       );
       expect(drawInteractions.length).toBe(0);
     });
 
-    it('should remove modify interaction from the map', () => {
-      // Simulate drawend by manually triggering addModifyInteraction
-      component.startDrawing();
+    it('should clear existing features before starting new drawing', () => {
+      mapDrawingService.startDrawing();
+      TestBed.flushEffects();
+
+      // After starting drawing, vectorSource should be empty
+      expect(component.vectorSource.getFeatures().length).toBe(0);
+    });
+
+    it('should not accumulate Draw interactions on repeated starts', () => {
+      mapDrawingService.startDrawing();
+      TestBed.flushEffects();
 
       const map = component.getMap();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
-      (component as any).addModifyInteraction();
+      const interactionsBefore = map.getInteractions().getArray().filter(
+        (i) => i.constructor.name === 'Draw'
+      ).length;
 
-      // Verify Modify interaction exists
-      let interactions = map.getInteractions().getArray();
-      let modifyInteractions = interactions.filter(
-        (i) => i.constructor.name === 'Modify'
-      );
-      expect(modifyInteractions.length).toBe(1);
+      // Cancel and restart
+      mapDrawingService.cancelDrawing();
+      TestBed.flushEffects();
+      mapDrawingService.startDrawing();
+      TestBed.flushEffects();
 
-      // Clear polygon should remove Modify interaction
-      component.clearPolygon();
-      interactions = map.getInteractions().getArray();
-      modifyInteractions = interactions.filter(
-        (i) => i.constructor.name === 'Modify'
-      );
-      expect(modifyInteractions.length).toBe(0);
+      const interactionsAfter = map.getInteractions().getArray().filter(
+        (i) => i.constructor.name === 'Draw'
+      ).length;
+
+      expect(interactionsAfter).toBe(interactionsBefore);
     });
   });
 
-  describe('modifyInteraction', () => {
+  describe('modifyEffect (MapDrawingService.hasPolygon)', () => {
     beforeEach(() => {
       fixture.detectChanges(); // initialize map
     });
 
-    it('should add Modify interaction after drawing completes', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
-      (component as any).addModifyInteraction();
+    it('should add Modify interaction when hasPolygon is true and not drawing', () => {
+      // Simulate drawing completion with a small valid polygon
+      mapDrawingService.setPolygonCoordinates([
+        [21.0122, 52.2297], [21.0132, 52.2297], [21.0132, 52.2287], [21.0122, 52.2287], [21.0122, 52.2297],
+      ]);
+      TestBed.flushEffects();
 
       const map = component.getMap();
       const interactions = map.getInteractions().getArray();
@@ -194,25 +118,14 @@ describe('MapComponent', () => {
       expect(modifyInteractions.length).toBe(1);
     });
 
-    it('should not accumulate Modify interactions on repeated calls', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
-      (component as any).addModifyInteraction();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
-      (component as any).addModifyInteraction();
+    it('should remove Modify interaction when hasPolygon becomes false', () => {
+      mapDrawingService.setPolygonCoordinates([
+        [21.0122, 52.2297], [21.0132, 52.2297], [21.0132, 52.2287], [21.0122, 52.2287], [21.0122, 52.2297],
+      ]);
+      TestBed.flushEffects();
 
-      const map = component.getMap();
-      const interactions = map.getInteractions().getArray();
-      const modifyInteractions = interactions.filter(
-        (i) => i.constructor.name === 'Modify'
-      );
-      expect(modifyInteractions.length).toBe(1);
-    });
-
-    it('should remove Modify interaction via removeModifyInteraction', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
-      (component as any).addModifyInteraction();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private method for test setup
-      (component as any).removeModifyInteraction();
+      mapDrawingService.clearPolygon();
+      TestBed.flushEffects();
 
       const map = component.getMap();
       const interactions = map.getInteractions().getArray();
@@ -220,6 +133,26 @@ describe('MapComponent', () => {
         (i) => i.constructor.name === 'Modify'
       );
       expect(modifyInteractions.length).toBe(0);
+    });
+
+    it('should not accumulate Modify interactions', () => {
+      mapDrawingService.setPolygonCoordinates([
+        [21.0122, 52.2297], [21.0132, 52.2297], [21.0132, 52.2287], [21.0122, 52.2287], [21.0122, 52.2297],
+      ]);
+      TestBed.flushEffects();
+
+      // Simulate modify end by calling setPolygonCoordinates again
+      mapDrawingService.setPolygonCoordinates([
+        [21.0122, 52.2297], [21.0135, 52.2297], [21.0135, 52.2287], [21.0122, 52.2287], [21.0122, 52.2297],
+      ]);
+      TestBed.flushEffects();
+
+      const map = component.getMap();
+      const interactions = map.getInteractions().getArray();
+      const modifyInteractions = interactions.filter(
+        (i) => i.constructor.name === 'Modify'
+      );
+      expect(modifyInteractions.length).toBe(1);
     });
   });
 
@@ -229,7 +162,7 @@ describe('MapComponent', () => {
     });
 
     it('should apply valid (blue) style to vector layer when validationResult is null', () => {
-      component.validationResult.set(null);
+      // validationResult starts as null in the service
       TestBed.flushEffects();
 
       const style = component.vectorLayer.getStyle() as Style;
@@ -239,7 +172,7 @@ describe('MapComponent', () => {
     });
 
     it('should apply valid (blue) style to vector layer when polygon is valid', () => {
-      component.validationResult.set({ isValid: true, errors: [] });
+      mapDrawingService.validationResult.set({ isValid: true, errors: [] });
       TestBed.flushEffects();
 
       const style = component.vectorLayer.getStyle() as Style;
@@ -250,8 +183,9 @@ describe('MapComponent', () => {
       expect(fill!.getColor()).toBe('rgba(33, 150, 243, 0.15)');
     });
 
-    it('should apply invalid (red) style to vector layer when polygon is invalid', () => {
-      component.validationResult.set({
+    it('should apply invalid (red) style when MapDrawingService.validationResult is invalid', () => {
+      // Directly set an invalid validation result on the service for testing style reactivity
+      mapDrawingService.validationResult.set({
         isValid: false,
         errors: [{ rule: ValidationRule.MinVertices, message: 'Too few vertices' }],
       });
@@ -266,8 +200,8 @@ describe('MapComponent', () => {
     });
 
     it('should switch from invalid to valid style when validationResult changes', () => {
-      // First set invalid
-      component.validationResult.set({
+      // Set invalid
+      mapDrawingService.validationResult.set({
         isValid: false,
         errors: [{ rule: ValidationRule.Closure, message: 'Not closed' }],
       });
@@ -276,26 +210,47 @@ describe('MapComponent', () => {
       let style = component.vectorLayer.getStyle() as Style;
       expect(style.getStroke()!.getColor()).toBe('rgba(244, 67, 54, 1)');
 
-      // Now set valid
-      component.validationResult.set({ isValid: true, errors: [] });
+      // Set valid
+      mapDrawingService.validationResult.set({ isValid: true, errors: [] });
       TestBed.flushEffects();
 
       style = component.vectorLayer.getStyle() as Style;
       expect(style.getStroke()!.getColor()).toBe('rgba(33, 150, 243, 1)');
     });
 
-    it('should revert to valid style when polygon is cleared', () => {
-      component.validationResult.set({
+    it('should revert to valid style when polygon is cleared via service', () => {
+      mapDrawingService.validationResult.set({
         isValid: false,
         errors: [{ rule: ValidationRule.SelfIntersection, message: 'Self-intersection' }],
       });
       TestBed.flushEffects();
 
-      component.clearPolygon();
+      mapDrawingService.clearPolygon();
       TestBed.flushEffects();
 
       const style = component.vectorLayer.getStyle() as Style;
       expect(style.getStroke()!.getColor()).toBe('rgba(33, 150, 243, 1)');
+    });
+  });
+
+  describe('template rendering (Requirements 2.1, 2.3, 2.4)', () => {
+    beforeEach(() => {
+      fixture.detectChanges();
+    });
+
+    it('should not render MapToolbarComponent (app-map-toolbar) in template', () => {
+      const toolbarEl = fixture.debugElement.query(By.css('app-map-toolbar'));
+      expect(toolbarEl).toBeNull();
+    });
+
+    it('should not contain a toolbar-overlay element', () => {
+      const overlayEl = fixture.debugElement.query(By.css('.toolbar-overlay'));
+      expect(overlayEl).toBeNull();
+    });
+
+    it('should render MapSearchComponent (app-map-search) as the sole overlay', () => {
+      const searchEl = fixture.debugElement.query(By.css('app-map-search'));
+      expect(searchEl).toBeTruthy();
     });
   });
 });

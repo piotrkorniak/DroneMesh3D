@@ -29,4 +29,8 @@ export class AreasApiService {
   listAreas(): Observable<AreaResponse[]> {
     return this.http.get<AreaResponse[]>(`${this.basePath}/areas`);
   }
+
+  deleteArea(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.basePath}/areas/${id}`);
+  }
 }

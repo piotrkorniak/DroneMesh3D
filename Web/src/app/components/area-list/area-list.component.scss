@@ -114,10 +114,18 @@
   color: var(--ds-color-text-primary);
   height: 56px;
   box-sizing: border-box;
+  position: relative;
 }
 
 .area-list__item:hover {
   background: var(--ds-color-surface-elevated);
+}
+
+.area-list__item:hover .area-list__delete-btn,
+.area-list__item:focus-within .area-list__delete-btn,
+.area-list__delete-btn:focus {
+  opacity: 1;
+  visibility: visible;
 }
 
 .area-list__item--selected {
@@ -145,4 +153,48 @@
   font-weight: var(--ds-font-weight-medium);
   color: var(--ds-color-text-primary);
   white-space: nowrap;
+}
+
+.area-list__delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-left: auto;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-color-error);
+  font-size: var(--ds-font-size-sm);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--ds-transition-fast), visibility var(--ds-transition-fast), background var(--ds-transition-fast);
+  flex-shrink: 0;
+}
+
+.area-list__delete-btn:hover {
+  background: var(--ds-color-error);
+  color: white;
+}
+
+.area-list__delete-btn:focus-visible {
+  outline: 2px solid var(--ds-color-primary);
+  outline-offset: 2px;
+  opacity: 1;
+  visibility: visible;
+}
+
+.area-list__delete-error {
+  padding: var(--ds-spacing-xs) var(--ds-spacing-md);
+  margin-bottom: var(--ds-spacing-xs);
+}
+
+.area-list__delete-error-message {
+  margin: 0;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-error);
 }

@@ -34,6 +34,10 @@ public static class FlightPlansEndpoint
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
+
+        group.MapDelete("/{id:guid}", DeleteFlightPlan)
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     private static async Task<IResult> ListFlightPlans(
@@ -150,5 +154,15 @@ public static class FlightPlansEndpoint
                 ? Results.NotFound()
                 : Results.Problem(statusCode: 500, detail: error.Message)
         );
+    }
+
+    private static async Task<IResult> DeleteFlightPlan(
+        Guid id,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var command = new DeleteFlightPlanCommand(id);
+        var deleted = await sender.Send(command, ct);
+        return deleted ? Results.NoContent() : Results.NotFound();
     }
 }

@@ -17,6 +17,8 @@ import OSM from 'ol/source/OSM';
 import Draw from 'ol/interaction/Draw';
 import Modify from 'ol/interaction/Modify';
 import { fromLonLat, toLonLat } from 'ol/proj';
+import { boundingExtent } from 'ol/extent';
+import Feature from 'ol/Feature';
 import Polygon from 'ol/geom/Polygon';
 import Style from 'ol/style/Style';
 import Stroke from 'ol/style/Stroke';
@@ -25,21 +27,26 @@ import { finalize } from 'rxjs';
 
 import { PolygonValidatorService } from '../../services/polygon-validator.service';
 import { AreaService } from '../../services/area.service';
+import { SelectionStateService } from '../../services/selection-state.service';
+import { FlightPathVisualizationService } from '../../services/flight-path-visualization.service';
 import { CreateAreaRequest } from '../../api/models/create-area-request';
 import { ValidationResult } from '../../models/validation';
 import { MapToolbarComponent } from '../map-toolbar/map-toolbar.component';
+import { MapSearchComponent, LocationSelectedEvent } from '../map-search/map-search.component';
 
 @Component({
   selector: 'app-map',
   templateUrl: './map.component.html',
   styleUrl: './map.component.scss',
   standalone: true,
-  imports: [MapToolbarComponent],
+  imports: [MapToolbarComponent, MapSearchComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MapComponent implements OnInit, OnDestroy {
   private readonly polygonValidator = inject(PolygonValidatorService);
   private readonly areaService = inject(AreaService);
+  private readonly selectionState = inject(SelectionStateService);
+  private readonly flightPathViz = inject(FlightPathVisualizationService);
 
   private map!: Map;
   readonly vectorSource = new VectorSource();
@@ -83,6 +90,44 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   });
 
+  // React to selectedArea changes: draw polygon on map and animate to fit bounds
+  private readonly selectedAreaEffect = effect(() => {
+    const area = this.selectionState.selectedArea();
+
+    // Clear any existing polygon from the vector source
+    this.vectorSource.clear();
+    this.hasPolygon.set(false);
+    this.validationResult.set(null);
+    this.removeModifyInteraction();
+
+    if (!area || !area.geometry || !area.geometry.coordinates) return;
+
+    const coordinates = area.geometry.coordinates[0]; // outer ring
+    if (!coordinates || coordinates.length === 0) return;
+
+    // Transform coordinates from EPSG:4326 to map projection (EPSG:3857)
+    const projectedCoords = coordinates.map(coord => fromLonLat(coord as [number, number]));
+
+    // Create and add the polygon feature to the map
+    const polygon = new Polygon([projectedCoords]);
+    const feature = new Feature(polygon);
+    this.vectorSource.addFeature(feature);
+    this.hasPolygon.set(true);
+    this.vectorLayer.setStyle(this.validStyle);
+
+    // Animate map view to fit the extent with 10% padding, 500ms duration
+    const extent = boundingExtent(projectedCoords);
+    const view = this.map?.getView();
+    if (view) {
+      const size = this.map.getSize();
+      const paddingValue = size ? Math.min(size[0], size[1]) * 0.1 : 50;
+      view.fit(extent, {
+        padding: [paddingValue, paddingValue, paddingValue, paddingValue],
+        duration: 500,
+      });
+    }
+  });
+
   ngOnInit(): void {
     this.initializeMap();
   }
@@ -99,6 +144,7 @@ export class MapComponent implements OnInit, OnDestroy {
           source: new OSM(),
         }),
         this.vectorLayer,
+        this.flightPathViz.flightPathLayer,
       ],
       view: new View({
         projection: 'EPSG:3857',
@@ -106,6 +152,9 @@ export class MapComponent implements OnInit, OnDestroy {
         zoom: 7,
       }),
     });
+
+    // Provide the map view reference to FlightPathVisualizationService
+    this.flightPathViz.setMapView(this.map.getView());
   }
 
   startDrawing(): void {
@@ -230,7 +279,15 @@ export class MapComponent implements OnInit, OnDestroy {
       .pipe(finalize(() => this.isSubmitting.set(false)))
       .subscribe({
         next: response => {
-          console.log('Area created successfully:', response);
+          // Prepend the new area to the list so it appears immediately
+          this.selectionState.areas.update(areas => [response, ...areas]);
+          // Select the new area (highlights it on the list and zooms map)
+          this.selectionState.selectArea(response.id);
+          // Clear the drawn polygon (it will be re-rendered by selectedAreaEffect)
+          this.vectorSource.clear();
+          this.removeModifyInteraction();
+          this.hasPolygon.set(false);
+          this.validationResult.set(null);
         },
         error: err => {
           const message =
@@ -242,5 +299,16 @@ export class MapComponent implements OnInit, OnDestroy {
 
   getMap(): Map {
     return this.map;
+  }
+
+  flyToLocation(event: LocationSelectedEvent): void {
+    const view = this.map?.getView();
+    if (!view) return;
+
+    view.animate({
+      center: fromLonLat([event.lon, event.lat]),
+      zoom: 16,
+      duration: 500,
+    });
   }
 }

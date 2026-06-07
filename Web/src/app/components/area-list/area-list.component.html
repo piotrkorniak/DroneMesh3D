@@ -18,6 +18,12 @@
     description="Narysuj polygon na mapie, aby utworzyć pierwszy obszar"
   />
 } @else {
+  @if (deleteError()) {
+    <div class="area-list__delete-error" role="alert">
+      <p class="area-list__delete-error-message">{{ deleteError() }}</p>
+    </div>
+  }
+
   <div
     class="area-list__container"
     [class.area-list__container--virtual]="useVirtualScroll()"
@@ -27,6 +33,7 @@
     tabindex="0"
     (keydown)="onKeydown($event)"
     (scroll)="useVirtualScroll() && onScroll($event)"
+    (click)="clearDeleteError()"
   >
     @if (useVirtualScroll()) {
       <div class="area-list__spacer" [style.height.px]="totalHeight()"></div>
@@ -47,6 +54,14 @@
             <span class="area-list__number">{{ item.index + 1 }}.</span>
             <span class="area-list__date">{{ item.area.createdAt | relativeTime }}</span>
             <span class="area-list__hectares">{{ getHectares(item.area) }} ha</span>
+            <button
+              class="area-list__delete-btn"
+              tabindex="0"
+              aria-label="Usuń obszar"
+              (click)="onDeleteClick(item.area, $event)"
+            >
+              ✕
+            </button>
           </div>
         }
       </div>
@@ -67,8 +82,28 @@
           <span class="area-list__number">{{ i + 1 }}.</span>
           <span class="area-list__date">{{ area.createdAt | relativeTime }}</span>
           <span class="area-list__hectares">{{ getHectares(area) }} ha</span>
+          <button
+            class="area-list__delete-btn"
+            tabindex="0"
+            aria-label="Usuń obszar"
+            (click)="onDeleteClick(area, $event)"
+          >
+            ✕
+          </button>
         </div>
       }
     }
   </div>
+}
+
+@if (deleteDialogOpen()) {
+  <app-confirmation-dialog
+    [title]="'Usuń obszar'"
+    [message]="deleteDialogMessage()"
+    [confirmLabel]="'Usuń'"
+    [cancelLabel]="'Anuluj'"
+    [loading]="deleteLoading()"
+    (confirmed)="onDeleteConfirmed()"
+    (cancelled)="onDeleteCancelled()"
+  />
 }

@@ -22,6 +22,10 @@ public static class AreasEndpoint
         group.MapGet("/{id:guid}", GetArea)
             .Produces<AreaResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/{id:guid}", DeleteArea)
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     private static async Task<IResult> ListAreas(
@@ -60,5 +64,14 @@ public static class AreasEndpoint
         var query = new GetAreaQuery(id);
         var result = await mediator.Send(query, ct);
         return result is not null ? Results.Ok(result) : Results.NotFound();
+    }
+
+    private static async Task<IResult> DeleteArea(
+        Guid id,
+        IMediator mediator,
+        CancellationToken ct)
+    {
+        var result = await mediator.Send(new DeleteAreaCommand(id), ct);
+        return result ? Results.NoContent() : Results.NotFound();
     }
 }

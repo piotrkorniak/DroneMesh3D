@@ -26,6 +26,10 @@ export class FlightPlansApiService {
     return this.http.get<FlightPlanResponse[]>(this.basePath, { params: httpParams });
   }
 
+  deleteFlightPlan(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.basePath}/${id}`);
+  }
+
   exportMissionFile(id: string, format: ExportFormat): Observable<HttpResponse<Blob>> {
     return this.http.get(`${this.basePath}/${id}/export`, {
       params: new HttpParams().set('format', format),

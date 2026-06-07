@@ -3,6 +3,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { FlightPlanListComponent } from './flight-plan-list.component';
 import { FlightPlansApiService } from '../../api/services/flight-plans.service';
 import { SelectionStateService } from '../../services/selection-state.service';
+import { LiveAnnouncerService } from '../../services/live-announcer.service';
 import { FlightPlanResponse } from '../../api/models/flight-plan-response';
 
 describe('FlightPlanListComponent', () => {
@@ -10,6 +11,7 @@ describe('FlightPlanListComponent', () => {
   let fixture: ComponentFixture<FlightPlanListComponent>;
   let flightPlansApiSpy: jasmine.SpyObj<FlightPlansApiService>;
   let selectionState: SelectionStateService;
+  let liveAnnouncerSpy: jasmine.SpyObj<LiveAnnouncerService>;
 
   const mockPlans: FlightPlanResponse[] = [
     {
@@ -36,13 +38,17 @@ describe('FlightPlanListComponent', () => {
   ];
 
   beforeEach(async () => {
-    flightPlansApiSpy = jasmine.createSpyObj('FlightPlansApiService', ['list', 'exportMissionFile']);
+    flightPlansApiSpy = jasmine.createSpyObj('FlightPlansApiService', ['list', 'exportMissionFile', 'deleteFlightPlan']);
     flightPlansApiSpy.list.and.returnValue(of(mockPlans));
+    flightPlansApiSpy.deleteFlightPlan.and.returnValue(of(void 0));
+
+    liveAnnouncerSpy = jasmine.createSpyObj('LiveAnnouncerService', ['announce']);
 
     await TestBed.configureTestingModule({
       imports: [FlightPlanListComponent],
       providers: [
         { provide: FlightPlansApiService, useValue: flightPlansApiSpy },
+        { provide: LiveAnnouncerService, useValue: liveAnnouncerSpy },
       ],
     }).compileComponents();
 
@@ -322,6 +328,139 @@ describe('FlightPlanListComponent', () => {
 
       const skeletons = fixture.nativeElement.querySelectorAll('app-skeleton');
       expect(skeletons.length).toBe(2);
+    });
+  });
+
+  describe('flight plan deletion', () => {
+    beforeEach(() => {
+      selectionState.selectArea('area-1');
+      fixture.detectChanges();
+    });
+
+    it('should render a delete button for each plan item always in DOM', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      expect(deleteButtons.length).toBe(2);
+    });
+
+    it('should have tabindex="0" on delete buttons for keyboard accessibility', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons.forEach((btn: HTMLElement) => {
+        expect(btn.getAttribute('tabindex')).toBe('0');
+      });
+    });
+
+    it('should have aria-label on delete buttons', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons.forEach((btn: HTMLElement) => {
+        expect(btn.getAttribute('aria-label')).toBe('Usuń plan lotu');
+      });
+    });
+
+    it('should open confirmation dialog when delete button is clicked', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      const dialog = fixture.nativeElement.querySelector('app-confirmation-dialog');
+      expect(dialog).toBeTruthy();
+    });
+
+    it('should identify plan by mode and date in confirmation dialog message', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      const message = component.getDeleteDialogMessage();
+      expect(message).toContain('Grid');
+      expect(message).toContain('2024');
+    });
+
+    it('should call deleteFlightPlan on confirm', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirm();
+      expect(flightPlansApiSpy.deleteFlightPlan).toHaveBeenCalledWith('plan-1');
+    });
+
+    it('should remove plan from list on successful deletion', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirm();
+      fixture.detectChanges();
+
+      expect(component.plans().length).toBe(1);
+      expect(component.plans()[0].id).toBe('plan-2');
+    });
+
+    it('should clear flight path visualization if deleted plan was selected', () => {
+      // Select the plan first
+      selectionState.selectPlan('plan-1');
+      fixture.detectChanges();
+
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirm();
+      fixture.detectChanges();
+
+      expect(selectionState.selectedPlanId()).toBeNull();
+    });
+
+    it('should announce plan count via LiveAnnouncerService after deletion', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirm();
+      fixture.detectChanges();
+
+      expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Plan lotu usunięty. Pozostało planów: 1');
+    });
+
+    it('should show inline error and preserve plan on deletion failure', () => {
+      flightPlansApiSpy.deleteFlightPlan.and.returnValue(throwError(() => new Error('Server error')));
+
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      component.onDeleteConfirm();
+      fixture.detectChanges();
+
+      expect(component.deleteError()).toBe('Server error');
+      expect(component.plans().length).toBe(2);
+
+      const errorEl = fixture.nativeElement.querySelector('.flight-plan-list__delete-error');
+      expect(errorEl).toBeTruthy();
+    });
+
+    it('should close dialog on cancel without deleting', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      component.onDeleteCancel();
+      fixture.detectChanges();
+
+      expect(component.deleteTargetPlan()).toBeNull();
+      expect(flightPlansApiSpy.deleteFlightPlan).not.toHaveBeenCalled();
+
+      const dialog = fixture.nativeElement.querySelector('app-confirmation-dialog');
+      expect(dialog).toBeFalsy();
+    });
+
+    it('should not propagate click event from delete button to parent item', () => {
+      const deleteButtons = fixture.nativeElement.querySelectorAll('.flight-plan-list__delete-btn');
+      deleteButtons[0].click();
+      fixture.detectChanges();
+
+      // If event propagated, the plan would be selected
+      expect(selectionState.selectedPlanId()).toBeNull();
     });
   });
 });

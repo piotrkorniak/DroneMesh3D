@@ -1,12 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   effect,
   inject,
   OnDestroy,
   OnInit,
-  signal,
 } from '@angular/core';
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -23,15 +21,10 @@ import Polygon from 'ol/geom/Polygon';
 import Style from 'ol/style/Style';
 import Stroke from 'ol/style/Stroke';
 import Fill from 'ol/style/Fill';
-import { finalize } from 'rxjs';
 
-import { PolygonValidatorService } from '../../services/polygon-validator.service';
-import { AreaService } from '../../services/area.service';
 import { SelectionStateService } from '../../services/selection-state.service';
 import { FlightPathVisualizationService } from '../../services/flight-path-visualization.service';
-import { CreateAreaRequest } from '../../api/models/create-area-request';
-import { ValidationResult } from '../../models/validation';
-import { MapToolbarComponent } from '../map-toolbar/map-toolbar.component';
+import { MapDrawingService } from '../../services/map-drawing.service';
 import { MapSearchComponent, LocationSelectedEvent } from '../map-search/map-search.component';
 
 @Component({
@@ -39,14 +32,13 @@ import { MapSearchComponent, LocationSelectedEvent } from '../map-search/map-sea
   templateUrl: './map.component.html',
   styleUrl: './map.component.scss',
   standalone: true,
-  imports: [MapToolbarComponent, MapSearchComponent],
+  imports: [MapSearchComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MapComponent implements OnInit, OnDestroy {
-  private readonly polygonValidator = inject(PolygonValidatorService);
-  private readonly areaService = inject(AreaService);
   private readonly selectionState = inject(SelectionStateService);
   private readonly flightPathViz = inject(FlightPathVisualizationService);
+  private readonly mapDrawingService = inject(MapDrawingService);
 
   private map!: Map;
   readonly vectorSource = new VectorSource();
@@ -65,22 +57,9 @@ export class MapComponent implements OnInit, OnDestroy {
     fill: new Fill({ color: 'rgba(244, 67, 54, 0.15)' }),
   });
 
-  // Signals for reactive state
-  readonly validationResult = signal<ValidationResult | null>(null);
-  readonly isSubmitting = signal(false);
-  readonly submissionError = signal<string | null>(null);
-  readonly hasPolygon = signal(false);
-  readonly isDrawing = signal(false);
-
-  // Computed signals
-  readonly isValid = computed(() => this.validationResult()?.isValid ?? false);
-  readonly validationErrors = computed(
-    () => this.validationResult()?.errors.map(e => e.message) ?? []
-  );
-
-  // Reactive style update based on validation result
+  // Reactive style update based on validation result from MapDrawingService
   private readonly validationStyleEffect = effect(() => {
-    const result = this.validationResult();
+    const result = this.mapDrawingService.validationResult();
     if (result === null) {
       this.vectorLayer.setStyle(this.validStyle);
     } else if (result.isValid) {
@@ -90,14 +69,36 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   });
 
+  // Watch MapDrawingService.isDrawing — when true, add Draw interaction; when false, remove it
+  private readonly drawingEffect = effect(() => {
+    const isDrawing = this.mapDrawingService.isDrawing();
+    if (isDrawing) {
+      this.addDrawInteraction();
+    } else {
+      this.removeDrawInteraction();
+    }
+  });
+
+  // Watch MapDrawingService.hasPolygon for Modify interaction management
+  private readonly modifyEffect = effect(() => {
+    const hasPolygon = this.mapDrawingService.hasPolygon();
+    if (hasPolygon && !this.mapDrawingService.isDrawing()) {
+      this.addModifyInteraction();
+    } else if (!hasPolygon) {
+      this.removeModifyInteraction();
+      // Clear vector source when polygon is cleared externally (e.g., via toolbar clear/cancel)
+      if (this.vectorSource.getFeatures().length > 0 && !this.selectionState.selectedArea()) {
+        this.vectorSource.clear();
+      }
+    }
+  });
+
   // React to selectedArea changes: draw polygon on map and animate to fit bounds
   private readonly selectedAreaEffect = effect(() => {
     const area = this.selectionState.selectedArea();
 
     // Clear any existing polygon from the vector source
     this.vectorSource.clear();
-    this.hasPolygon.set(false);
-    this.validationResult.set(null);
     this.removeModifyInteraction();
 
     if (!area || !area.geometry || !area.geometry.coordinates) return;
@@ -112,7 +113,6 @@ export class MapComponent implements OnInit, OnDestroy {
     const polygon = new Polygon([projectedCoords]);
     const feature = new Feature(polygon);
     this.vectorSource.addFeature(feature);
-    this.hasPolygon.set(true);
     this.vectorLayer.setStyle(this.validStyle);
 
     // Animate map view to fit the extent with 10% padding, 500ms duration
@@ -157,7 +157,7 @@ export class MapComponent implements OnInit, OnDestroy {
     this.flightPathViz.setMapView(this.map.getView());
   }
 
-  startDrawing(): void {
+  private addDrawInteraction(): void {
     // Clear any existing features and interactions
     this.vectorSource.clear();
     this.removeDrawInteraction();
@@ -174,41 +174,26 @@ export class MapComponent implements OnInit, OnDestroy {
       if (!geometry) return;
 
       // Extract coordinates from the drawn polygon (in EPSG:3857)
-      const coords3857 = (geometry as import('ol/geom/Polygon').default).getCoordinates()[0];
+      const coords3857 = (geometry as Polygon).getCoordinates()[0];
 
       // Transform from EPSG:3857 to EPSG:4326 (WGS 84)
       const coords4326 = coords3857.map(coord => toLonLat(coord));
 
-      // Run validation
-      const result = this.polygonValidator.validate(coords4326);
-      this.validationResult.set(result);
-      this.hasPolygon.set(true);
-      this.isDrawing.set(false);
+      // Delegate to MapDrawingService
+      this.mapDrawingService.setPolygonCoordinates(coords4326);
 
       // Remove the draw interaction after drawing is complete
       this.removeDrawInteraction();
-
-      // Add Modify interaction to allow vertex dragging
-      this.addModifyInteraction();
     });
 
-    this.map.addInteraction(this.drawInteraction);
-    this.isDrawing.set(true);
-  }
-
-  clearPolygon(): void {
-    this.vectorSource.clear();
-    this.removeDrawInteraction();
-    this.removeModifyInteraction();
-    this.hasPolygon.set(false);
-    this.validationResult.set(null);
-    this.isDrawing.set(false);
-    this.submissionError.set(null);
+    if (this.map) {
+      this.map.addInteraction(this.drawInteraction);
+    }
   }
 
   private removeDrawInteraction(): void {
     if (this.drawInteraction) {
-      this.map.removeInteraction(this.drawInteraction);
+      this.map?.removeInteraction(this.drawInteraction);
       this.drawInteraction = null;
     }
   }
@@ -233,68 +218,20 @@ export class MapComponent implements OnInit, OnDestroy {
       // Transform from EPSG:3857 to EPSG:4326 (WGS 84)
       const coords4326 = coords3857.map(coord => toLonLat(coord));
 
-      // Re-validate the modified polygon
-      const result = this.polygonValidator.validate(coords4326);
-      this.validationResult.set(result);
+      // Update coordinates in service (triggers re-validation)
+      this.mapDrawingService.setPolygonCoordinates(coords4326);
     });
 
-    this.map.addInteraction(this.modifyInteraction);
+    if (this.map) {
+      this.map.addInteraction(this.modifyInteraction);
+    }
   }
 
   private removeModifyInteraction(): void {
     if (this.modifyInteraction) {
-      this.map.removeInteraction(this.modifyInteraction);
+      this.map?.removeInteraction(this.modifyInteraction);
       this.modifyInteraction = null;
     }
-  }
-
-  submitArea(): void {
-    // Get the current polygon feature from vectorSource
-    const features = this.vectorSource.getFeatures();
-    if (features.length === 0) return;
-
-    const feature = features[0];
-    const geometry = feature.getGeometry();
-    if (!geometry || !(geometry instanceof Polygon)) return;
-
-    // Extract the outer ring coordinates (in EPSG:3857)
-    const coords3857 = geometry.getCoordinates()[0];
-
-    // Transform each coordinate from EPSG:3857 to EPSG:4326 (WGS 84)
-    const coords4326 = coords3857.map(coord => toLonLat(coord));
-
-    // Construct a CreateAreaRequest with GeoJSON Polygon format
-    const request: CreateAreaRequest = {
-      type: 'Polygon',
-      coordinates: [coords4326],
-    };
-
-    // Set submitting state
-    this.isSubmitting.set(true);
-    this.submissionError.set(null);
-
-    // Call AreaService and manage signal state
-    this.areaService
-      .createArea(request)
-      .pipe(finalize(() => this.isSubmitting.set(false)))
-      .subscribe({
-        next: response => {
-          // Prepend the new area to the list so it appears immediately
-          this.selectionState.areas.update(areas => [response, ...areas]);
-          // Select the new area (highlights it on the list and zooms map)
-          this.selectionState.selectArea(response.id);
-          // Clear the drawn polygon (it will be re-rendered by selectedAreaEffect)
-          this.vectorSource.clear();
-          this.removeModifyInteraction();
-          this.hasPolygon.set(false);
-          this.validationResult.set(null);
-        },
-        error: err => {
-          const message =
-            err?.error?.message ?? err?.message ?? 'An unexpected error occurred.';
-          this.submissionError.set(message);
-        },
-      });
   }
 
   getMap(): Map {

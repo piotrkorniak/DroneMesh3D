@@ -1,0 +1,19 @@
+using DroneMesh3D.Api.Commands;
+using DroneMesh3D.Core.Data;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace DroneMesh3D.Api.Handlers;
+
+public sealed class DeleteAreaCommandHandler(AppDbContext context)
+    : IRequestHandler<DeleteAreaCommand, bool>
+{
+    public async Task<bool> Handle(DeleteAreaCommand command, CancellationToken ct)
+    {
+        var deleted = await context.Areas
+            .Where(a => a.Id == command.Id)
+            .ExecuteDeleteAsync(ct);
+
+        return deleted > 0;
+    }
+}

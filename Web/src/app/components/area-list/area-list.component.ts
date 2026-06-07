@@ -8,11 +8,14 @@ import {
 } from '@angular/core';
 import { AreaResponse } from '../../api/models/area-response';
 import { AreasApiService } from '../../api/services/areas.service';
+import { FlightPlansApiService } from '../../api/services/flight-plans.service';
 import { SelectionStateService } from '../../services/selection-state.service';
 import { AreaCalculationService } from '../../services/area-calculation.service';
+import { LiveAnnouncerService } from '../../services/live-announcer.service';
 import { RelativeTimePipe } from '../../pipes/relative-time.pipe';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 import { sortByCreatedAtDesc } from '../../utils/sort-by-date';
 
 /**
@@ -24,13 +27,15 @@ import { sortByCreatedAtDesc } from '../../utils/sort-by-date';
   selector: 'app-area-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RelativeTimePipe, SkeletonComponent, EmptyStateComponent],
+  imports: [RelativeTimePipe, SkeletonComponent, EmptyStateComponent, ConfirmationDialogComponent],
   templateUrl: './area-list.component.html',
   styleUrl: './area-list.component.scss',
 })
 export class AreaListComponent implements OnInit {
   private readonly areasApi = inject(AreasApiService);
+  private readonly flightPlansApi = inject(FlightPlansApiService);
   private readonly areaCalcService = inject(AreaCalculationService);
+  private readonly liveAnnouncer = inject(LiveAnnouncerService);
   readonly selectionState = inject(SelectionStateService);
 
   /** Areas displayed in the list — derived from SelectionStateService (single source of truth) */
@@ -89,6 +94,22 @@ export class AreaListComponent implements OnInit {
   /** Cache for hectares computation to avoid recalculating on every change detection */
   private readonly hectaresCache = new Map<string, number>();
 
+  /** Deletion state */
+  readonly deleteDialogOpen = signal(false);
+  readonly deleteLoading = signal(false);
+  readonly deleteError = signal<string | null>(null);
+  readonly deleteTargetArea = signal<AreaResponse | null>(null);
+  readonly deletePlanCount = signal(0);
+
+  /** Computed dialog message including cascade warning */
+  readonly deleteDialogMessage = computed(() => {
+    const planCount = this.deletePlanCount();
+    if (planCount > 0) {
+      return `Czy na pewno chcesz usunąć ten obszar? Zostaną również usunięte ${planCount} powiązane plany lotu.`;
+    }
+    return 'Czy na pewno chcesz usunąć ten obszar?';
+  });
+
   ngOnInit(): void {
     this.loadAreas();
   }
@@ -129,6 +150,77 @@ export class AreaListComponent implements OnInit {
   onScroll(event: Event): void {
     const target = event.target as HTMLElement;
     this.scrollTop.set(target.scrollTop);
+  }
+
+  /** Initiate delete flow: fetch plan count and open confirmation dialog */
+  onDeleteClick(area: AreaResponse, event: Event): void {
+    event.stopPropagation();
+    this.deleteError.set(null);
+    this.deleteTargetArea.set(area);
+    this.deleteLoading.set(false);
+
+    this.flightPlansApi.list({ areaId: area.id }).subscribe({
+      next: (plans) => {
+        this.deletePlanCount.set(plans.length);
+        this.deleteDialogOpen.set(true);
+      },
+      error: () => {
+        // If we can't fetch plan count, still show dialog without cascade warning
+        this.deletePlanCount.set(0);
+        this.deleteDialogOpen.set(true);
+      },
+    });
+  }
+
+  /** Handle confirmation from dialog */
+  onDeleteConfirmed(): void {
+    const area = this.deleteTargetArea();
+    if (!area) return;
+
+    this.deleteLoading.set(true);
+
+    this.areasApi.deleteArea(area.id).subscribe({
+      next: () => {
+        // Remove area from list
+        const currentAreas = this.selectionState.areas();
+        this.selectionState.areas.set(currentAreas.filter(a => a.id !== area.id));
+
+        // Clear selection if the deleted area was selected
+        if (this.selectionState.selectedAreaId() === area.id) {
+          this.selectionState.selectArea(null);
+          this.selectionState.plans.set([]);
+        }
+
+        // Close dialog and reset state
+        this.deleteDialogOpen.set(false);
+        this.deleteLoading.set(false);
+        this.deleteTargetArea.set(null);
+
+        // Announce deletion via aria-live
+        const remainingCount = this.selectionState.areas().length;
+        this.liveAnnouncer.announce(
+          `Obszar usunięty. Pozostało ${remainingCount} obszarów.`
+        );
+      },
+      error: (err) => {
+        // Close dialog, show inline error
+        this.deleteDialogOpen.set(false);
+        this.deleteLoading.set(false);
+        this.deleteTargetArea.set(null);
+        this.deleteError.set(err?.message || 'Nie udało się usunąć obszaru');
+      },
+    });
+  }
+
+  /** Handle cancel from dialog */
+  onDeleteCancelled(): void {
+    this.deleteDialogOpen.set(false);
+    this.deleteTargetArea.set(null);
+  }
+
+  /** Clear the delete error (on next user action) */
+  clearDeleteError(): void {
+    this.deleteError.set(null);
   }
 
   onKeydown(event: KeyboardEvent): void {

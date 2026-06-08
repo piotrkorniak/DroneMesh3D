@@ -1,15 +1,14 @@
 #!/bin/sh
-# Pre-commit hook: format + lint only (fast)
+# Pre-commit hook: format check only (fast)
 # Build and tests run in pre-push hook and CI.
-# Install: git config core.hooksPath hooks (auto-installed by dotnet build / npm install)
+# Install: git config core.hooksPath hooks (auto-installed by dotnet build)
 
 set -e
 
 echo "=== Pre-commit: Code formatting check ==="
 
-# Get staged files (only added/modified, not deleted)
+# Get staged C# files (only added/modified, not deleted)
 STAGED_CS=$(git diff --cached --name-only --diff-filter=ACM | grep '\.cs$' || true)
-STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|html)$' | grep '^Web/' || true)
 
 # --- C# CleanupCode ---
 if [ -n "$STAGED_CS" ]; then
@@ -30,13 +29,6 @@ if [ -n "$STAGED_CS" ]; then
     echo "CleanupCode has auto-fixed them. Run 'git add' on the changes and commit again."
     exit 1
   fi
-fi
-
-# --- ESLint ---
-if [ -n "$STAGED_TS" ]; then
-  echo "Running ESLint on staged Web files..."
-  FILES_FOR_LINT=$(echo "$STAGED_TS" | sed 's|^Web/||' | tr '\n' ' ')
-  (cd Web && npx eslint --max-warnings=0 $FILES_FOR_LINT)
 fi
 
 echo "=== Pre-commit: All checks passed ==="

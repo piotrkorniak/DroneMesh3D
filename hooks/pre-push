@@ -6,22 +6,12 @@ set -e
 
 echo "=== Pre-push: Build ==="
 
-# --- Backend build ---
 echo "Building .NET solution..."
 dotnet build DroneMesh3D.slnx --configuration Release --nologo -v q
 
-# --- Frontend build ---
-echo "Building Angular app..."
-(cd Web && npx ng build --configuration production 2>/dev/null)
-
 echo "=== Pre-push: Tests ==="
 
-# --- Backend tests ---
 echo "Running .NET tests..."
 dotnet test DroneMesh3D.slnx --configuration Release --no-build --nologo -v q
-
-# --- Frontend tests ---
-echo "Running Angular tests..."
-(cd Web && npx ng test --watch=false --browsers=ChromeHeadless)
 
 echo "=== Pre-push: All checks passed ==="

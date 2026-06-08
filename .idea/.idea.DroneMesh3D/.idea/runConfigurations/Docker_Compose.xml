@@ -1,0 +1,21 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Docker Compose" type="docker-deploy" factoryName="docker-compose.deploy" server-name="Docker">
+    <deployment type="docker-compose.deploy">
+      <settings>
+        <option name="composeFilePaths">
+          <list>
+            <option value="$PROJECT_DIR$/../docker-compose.yml" />
+            <option value="$PROJECT_DIR$/../docker-compose.override.yml" />
+          </list>
+        </option>
+        <option name="services">
+          <list>
+            <option value="api" />
+            <option value="db" />
+          </list>
+        </option>
+      </settings>
+    </deployment>
+    <method v="2" />
+  </configuration>
+</component>

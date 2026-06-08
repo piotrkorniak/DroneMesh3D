@@ -10,23 +10,15 @@ echo "=== Pre-commit: Code formatting check ==="
 # Get staged C# files (only added/modified, not deleted)
 STAGED_CS=$(git diff --cached --name-only --diff-filter=ACM | grep '\.cs$' || true)
 
-# --- C# CleanupCode ---
+# --- dotnet format ---
 if [ -n "$STAGED_CS" ]; then
-  echo "Running CleanupCode on staged C# files..."
-  dotnet jb cleanupcode DroneMesh3D.slnx \
-    --include="$(echo "$STAGED_CS" | tr '\n' ';')" \
-    --profile="Built-in: Full Cleanup" \
-    --dotnetcore="$(which dotnet)" \
-    --no-build 2>/dev/null
-
-  # Check if cleanupcode modified any files
-  CHANGED_CS=$(git diff --name-only -- $STAGED_CS)
-  if [ -n "$CHANGED_CS" ]; then
+  echo "Running dotnet format on staged C# files..."
+  if ! dotnet format DroneMesh3D.slnx \
+    --include $(echo "$STAGED_CS" | tr '\n' ' ') \
+    --verify-no-changes 2>/dev/null; then
     echo ""
-    echo "ERROR: The following C# files need formatting:"
-    echo "$CHANGED_CS"
-    echo ""
-    echo "CleanupCode has auto-fixed them. Run 'git add' on the changes and commit again."
+    echo "ERROR: The above C# files need formatting."
+    echo "Run 'dotnet format DroneMesh3D.slnx' to fix, then stage the changes."
     exit 1
   fi
 fi

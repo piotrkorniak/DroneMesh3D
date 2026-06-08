@@ -1,42 +1,26 @@
 #!/bin/sh
-# Pre-commit hook: format + lint only (fast)
+# Pre-commit hook: format check only (fast)
 # Build and tests run in pre-push hook and CI.
-# Install: git config core.hooksPath hooks (auto-installed by dotnet build / npm install)
+# Install: git config core.hooksPath hooks (auto-installed by dotnet build)
 
 set -e
 
 echo "=== Pre-commit: Code formatting check ==="
 
-# Get staged files (only added/modified, not deleted)
+# Get staged C# files (only added/modified, not deleted)
 STAGED_CS=$(git diff --cached --name-only --diff-filter=ACM | grep '\.cs$' || true)
-STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|html)$' | grep '^Web/' || true)
 
-# --- C# CleanupCode ---
+# --- dotnet format ---
 if [ -n "$STAGED_CS" ]; then
-  echo "Running CleanupCode on staged C# files..."
-  dotnet jb cleanupcode DroneMesh3D.slnx \
-    --include="$(echo "$STAGED_CS" | tr '\n' ';')" \
-    --profile="Built-in: Full Cleanup" \
-    --dotnetcore="$(which dotnet)" \
-    --no-build 2>/dev/null
-
-  # Check if cleanupcode modified any files
-  CHANGED_CS=$(git diff --name-only -- $STAGED_CS)
-  if [ -n "$CHANGED_CS" ]; then
+  echo "Running dotnet format on staged C# files..."
+  if ! dotnet format DroneMesh3D.slnx \
+    --include $(echo "$STAGED_CS" | tr '\n' ' ') \
+    --verify-no-changes 2>/dev/null; then
     echo ""
-    echo "ERROR: The following C# files need formatting:"
-    echo "$CHANGED_CS"
-    echo ""
-    echo "CleanupCode has auto-fixed them. Run 'git add' on the changes and commit again."
+    echo "ERROR: The above C# files need formatting."
+    echo "Run 'dotnet format DroneMesh3D.slnx' to fix, then stage the changes."
     exit 1
   fi
-fi
-
-# --- ESLint ---
-if [ -n "$STAGED_TS" ]; then
-  echo "Running ESLint on staged Web files..."
-  FILES_FOR_LINT=$(echo "$STAGED_TS" | sed 's|^Web/||' | tr '\n' ' ')
-  (cd Web && npx eslint --max-warnings=0 $FILES_FOR_LINT)
 fi
 
 echo "=== Pre-commit: All checks passed ==="

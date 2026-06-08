@@ -40,17 +40,7 @@ Desktop.ini
 *.sln.docstates
 project.lock.json
 
-# ===========================
-# Angular / Web
-# ===========================
-Web/node_modules/
-Web/dist/
-Web/tmp/
-Web/out-tsc/
-Web/.angular/
-Web/coverage/
-npm-debug.log
-yarn-error.log
+
 
 # ===========================
 # Docker

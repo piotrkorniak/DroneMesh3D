@@ -1,0 +1,39 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AZURE_WEBAPP_NAME: dronemesh3d-api
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore DroneMesh3D.slnx
+
+      - name: Build
+        run: dotnet build DroneMesh3D.slnx --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish Api/DroneMesh3D.Api.csproj --configuration Release --no-build --output ./publish
+
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish

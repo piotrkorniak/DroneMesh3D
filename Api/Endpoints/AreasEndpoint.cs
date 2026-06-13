@@ -89,5 +89,3 @@ public static class AreasEndpoint
         return result is not null ? Results.Ok(result) : Results.NotFound();
     }
 }
-
-public record UpdateAreaNameRequest(string? Name);

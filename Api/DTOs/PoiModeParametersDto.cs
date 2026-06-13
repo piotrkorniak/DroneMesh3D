@@ -1,3 +1,5 @@
+using DroneMesh3D.Core.FlightPath;
+
 namespace DroneMesh3D.Api.DTOs;
 
 public sealed record PoiModeParametersDto(
@@ -10,5 +12,5 @@ public sealed record PoiModeParametersDto(
     double? OverlapPercent,
     double? CameraHorizontalFovDegrees,
     double? StructureHeightM,
-    string? OrbitShape = null,
+    OrbitShape? OrbitShape = null,
     double[][]? AreaCoordinates = null);

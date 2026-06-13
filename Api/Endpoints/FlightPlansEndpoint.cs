@@ -99,9 +99,7 @@ public static class FlightPlansEndpoint
                 request.Poi.StructureHeightM)
             : null;
 
-        OrbitShape? orbitShape = request.Poi?.OrbitShape is not null
-            ? Enum.Parse<OrbitShape>(request.Poi.OrbitShape, true)
-            : null;
+        OrbitShape? orbitShape = request.Poi?.OrbitShape;
 
         var command = new CalculateFlightPathCommand(
             request.AreaId,

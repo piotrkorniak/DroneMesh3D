@@ -21,4 +21,13 @@ public sealed class AreaRepository(AppDbContext context) : IAreaRepository
             .AsNoTracking()
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync(ct);
+
+    public async Task<int> GetMaxSequentialNumberAsync(CancellationToken ct = default)
+        => await context.Areas.MaxAsync(a => (int?)a.SequentialNumber, ct) ?? 0;
+
+    public async Task UpdateAsync(AreaEntity entity, CancellationToken ct = default)
+    {
+        context.Areas.Update(entity);
+        await context.SaveChangesAsync(ct);
+    }
 }

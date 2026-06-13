@@ -9,4 +9,6 @@ public sealed record PoiModeParametersDto(
     int? PhotoCount,
     double? OverlapPercent,
     double? CameraHorizontalFovDegrees,
-    double? StructureHeightM);
+    double? StructureHeightM,
+    string? OrbitShape = null,
+    double[][]? AreaCoordinates = null);

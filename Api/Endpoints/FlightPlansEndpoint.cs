@@ -99,11 +99,17 @@ public static class FlightPlansEndpoint
                 request.Poi.StructureHeightM)
             : null;
 
+        OrbitShape? orbitShape = request.Poi?.OrbitShape is not null
+            ? Enum.Parse<OrbitShape>(request.Poi.OrbitShape, true)
+            : null;
+
         var command = new CalculateFlightPathCommand(
             request.AreaId,
             request.Mode,
             gridParameters,
-            poiParameters);
+            poiParameters,
+            orbitShape,
+            request.Poi?.AreaCoordinates);
 
         var result = await mediator.Send(command, ct);
 

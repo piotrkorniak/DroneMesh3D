@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using DroneMesh3D.Api.Services;
 using DroneMesh3D.Core.Data;
+using DroneMesh3D.Core.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,25 +12,18 @@ using Microsoft.Extensions.Options;
 
 namespace DroneMesh3D.Api.Tests.Integration;
 
-/// <summary>
-///     Shared WebApplicationFactory for all integration tests.
-///     Initialized once per test run via xUnit collection fixture.
-/// </summary>
 public sealed class DroneMesh3DApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public async Task InitializeAsync()
     {
-        // MigrateAsync already ran from ConfigurePipelineAsync when host started.
-        // Drop and recreate for clean slate.
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.EnsureDeletedAsync();
         await db.Database.MigrateAsync();
 
-        // Seed test user
-        db.Users.Add(new Core.Entities.UserEntity
+        db.Users.Add(new UserEntity
         {
             Id = TestUserId,
             GoogleId = "test-google-id",
@@ -47,7 +40,6 @@ public sealed class DroneMesh3DApiFactory : WebApplicationFactory<Program>, IAsy
     {
         builder.ConfigureServices(services =>
         {
-            // Remove existing DbContext registration
             var descriptorsToRemove = services
                 .Where(d =>
                     d.ServiceType == typeof(DbContextOptions<AppDbContext>)
@@ -62,7 +54,6 @@ public sealed class DroneMesh3DApiFactory : WebApplicationFactory<Program>, IAsy
                 services.Remove(d);
             }
 
-            // Remove Npgsql provider services
             var efInternalDescriptors = services
                 .Where(d =>
                     d.ServiceType.FullName?.StartsWith("Microsoft.EntityFrameworkCore") == true
@@ -78,11 +69,8 @@ public sealed class DroneMesh3DApiFactory : WebApplicationFactory<Program>, IAsy
                                    ?? "Host=localhost;Database=dronemesh3d_test;Username=postgres;Password=YourStr0ngP@ssword";
 
             services.AddDbContext<AppDbContext>(options =>
-            {
-                options.UseNpgsql(connectionString, x => x.UseNetTopologySuite());
-            });
+                options.UseNpgsql(connectionString, x => x.UseNetTopologySuite()));
 
-            // Replace authentication with test scheme
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
 
@@ -99,13 +87,6 @@ public sealed class DroneMesh3DApiFactory : WebApplicationFactory<Program>, IAsy
                     o.ClientId = "test-client-id";
                     o.ClientSecret = "test-client-secret";
                 });
-        });
-
-        builder.ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddConsole();
-            logging.SetMinimumLevel(LogLevel.Warning);
         });
 
         builder.UseEnvironment("Testing");

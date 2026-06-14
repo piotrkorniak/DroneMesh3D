@@ -3,10 +3,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using DroneMesh3D.Api.DTOs;
 using DroneMesh3D.Core.Data;
-using DroneMesh3D.Core.Entities;
 using DroneMesh3D.Core.FlightPath;
 using DroneMesh3D.Core.Models;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DroneMesh3D.Api.Tests.Integration;
@@ -46,27 +44,11 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // Clean all data before each test for full isolation
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.FlightPlans.RemoveRange(db.FlightPlans);
         db.Areas.RemoveRange(db.Areas);
         await db.SaveChangesAsync();
-
-        // Ensure test user exists
-        var testUser = await db.Users.FirstOrDefaultAsync(u => u.Id == DroneMesh3DApiFactory.TestUserId);
-        if (testUser is null)
-        {
-            db.Users.Add(new UserEntity
-            {
-                Id = DroneMesh3DApiFactory.TestUserId,
-                GoogleId = "test-google-id",
-                Email = "test@example.com",
-                Name = "Test User",
-                CreatedAt = DateTimeOffset.UtcNow
-            });
-            await db.SaveChangesAsync();
-        }
     }
 
     public Task DisposeAsync()

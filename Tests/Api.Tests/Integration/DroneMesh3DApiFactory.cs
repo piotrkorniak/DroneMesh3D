@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,11 +22,23 @@ public sealed class DroneMesh3DApiFactory : WebApplicationFactory<Program>, IAsy
 
     public async Task InitializeAsync()
     {
-        // Ensure a clean database at the start of the test run
+        // MigrateAsync already ran from ConfigurePipelineAsync when host started.
+        // Drop and recreate for clean slate.
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.EnsureDeletedAsync();
-        await db.Database.EnsureCreatedAsync();
+        await db.Database.MigrateAsync();
+
+        // Seed test user
+        db.Users.Add(new Core.Entities.UserEntity
+        {
+            Id = TestUserId,
+            GoogleId = "test-google-id",
+            Email = "test@example.com",
+            Name = "Test User",
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
     }
 
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
@@ -69,7 +80,6 @@ public sealed class DroneMesh3DApiFactory : WebApplicationFactory<Program>, IAsy
             services.AddDbContext<AppDbContext>(options =>
             {
                 options.UseNpgsql(connectionString, x => x.UseNetTopologySuite());
-                options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
             });
 
             // Replace authentication with test scheme
@@ -81,6 +91,13 @@ public sealed class DroneMesh3DApiFactory : WebApplicationFactory<Program>, IAsy
                 o.DefaultAuthenticateScheme = "Test";
                 o.DefaultChallengeScheme = "Test";
             });
+        });
+
+        builder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
+            logging.SetMinimumLevel(LogLevel.Warning);
         });
 
         builder.UseEnvironment("Testing");

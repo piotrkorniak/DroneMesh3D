@@ -1,10 +1,9 @@
 using System.Security.Claims;
-using DroneMesh3D.Core.Data;
-using DroneMesh3D.Core.Entities;
+using DroneMesh3D.Api.Commands;
+using MediatR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.EntityFrameworkCore;
 
 namespace DroneMesh3D.Api.Endpoints;
 
@@ -23,7 +22,7 @@ public static class AuthEndpoint
             return Results.Challenge(properties, [GoogleDefaults.AuthenticationScheme]);
         });
 
-        group.MapGet("/google/callback", async (HttpContext httpContext, AppDbContext db, string? returnUrl, CancellationToken ct) =>
+        group.MapGet("/google/callback", async (HttpContext httpContext, ISender sender, string? returnUrl, CancellationToken ct) =>
         {
             var result = await httpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
             if (!result.Succeeded)
@@ -36,28 +35,7 @@ public static class AuthEndpoint
             var name = result.Principal.FindFirstValue(ClaimTypes.Name);
             var avatar = result.Principal.FindFirstValue("urn:google:picture");
 
-            var user = await db.Users.FirstOrDefaultAsync(u => u.GoogleId == googleId, ct);
-            if (user is null)
-            {
-                user = new UserEntity
-                {
-                    Id = Guid.CreateVersion7(),
-                    GoogleId = googleId,
-                    Email = email,
-                    Name = name,
-                    AvatarUrl = avatar,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-                db.Users.Add(user);
-            }
-            else
-            {
-                user.Email = email;
-                user.Name = name;
-                user.AvatarUrl = avatar;
-            }
-
-            await db.SaveChangesAsync(ct);
+            var user = await sender.Send(new UpsertGoogleUserCommand(googleId, email, name, avatar), ct);
 
             var claims = new List<Claim>
             {
@@ -68,9 +46,7 @@ public static class AuthEndpoint
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var principal = new ClaimsPrincipal(identity);
-
-            await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
             return Results.Redirect(Uri.IsWellFormedUriString(returnUrl, UriKind.Relative) ? returnUrl : "/");
         });
@@ -92,4 +68,3 @@ public static class AuthEndpoint
         }).RequireAuthorization();
     }
 }
-
